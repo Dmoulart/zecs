@@ -1,14 +1,14 @@
 const std = @import("std");
 const Component = @import("./component.zig").Component;
+const SparseSet = @import("./sparse-set.zig").SparseSet;
+const Entity = @import("./world.zig").Entity;
 
 pub const ArchetypeMask = u128;
 
 const HASH_BASE: ArchetypeMask = 133562;
 const HASH_ENTROPY: ArchetypeMask = 423052;
 
-pub const Archetype = struct {
-    mask: u128,
-};
+pub const Archetype = struct { mask: ArchetypeMask, entities: SparseSet(Entity) };
 
 pub fn hash(ids: []u64) ArchetypeMask {
     var hash_value: ArchetypeMask = HASH_BASE;
@@ -31,5 +31,5 @@ pub fn hashComponentsIds(comptime comps: anytype) ArchetypeMask {
 }
 
 pub fn archetype(comptime comps: anytype) Archetype {
-    return Archetype{ .mask = hashComponentsIds(comps) };
+    return Archetype{ .mask = hashComponentsIds(comps), .entities = SparseSet(Entity){} };
 }

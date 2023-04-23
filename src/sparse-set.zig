@@ -1,11 +1,13 @@
 const std = @import("std");
 const expect = std.testing.expect;
 
-pub fn SparseSet(comptime T: type, comptime capacity: comptime_int) type {
+const DEFAULT_SPARSE_SET_CAPACITY = 10_000;
+
+pub fn SparseSet(comptime T: type) type {
     return struct {
         const Self = @This();
-        indices: [capacity]T = undefined,
-        values: [capacity]T = undefined,
+        indices: [DEFAULT_SPARSE_SET_CAPACITY]T = undefined,
+        values: [DEFAULT_SPARSE_SET_CAPACITY]T = undefined,
         count: T = 0,
 
         pub fn add(self: *Self, value: T) void {

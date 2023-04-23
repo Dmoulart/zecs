@@ -9,10 +9,12 @@ pub const Entity = u64;
 
 const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
 
+pub const DEFAULT_WORLD_CAPACITY = 10_000;
+
 pub const World = struct {
     const Self = @This();
     capacity: u128,
-    entities: [10000]Entity = undefined,
+    entities: [DEFAULT_WORLD_CAPACITY]Entity = undefined,
     cursor: usize,
     allocator: std.mem.Allocator,
     archetypes: ArchetypeMap,

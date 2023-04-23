@@ -15,11 +15,12 @@ pub fn main() !void {
     defer arena.deinit();
 
     var transform = archetype(.{ Position, Velocity });
+    _ = transform;
 
     var world = World.init(arena.child_allocator);
     var ent = world.createEntity();
     world.attach(ent, Position);
 
     std.debug.print("ent {}", .{ent});
-    std.debug.print("hash transform {}", .{transform});
+    // std.debug.print("hash transform {}", .{transform});
 }
