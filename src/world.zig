@@ -2,6 +2,7 @@ const std = @import("std");
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
+const createArchetype = @import("./archetype.zig").createArchetype;
 
 var global_entity_counter: Entity = 0;
 
@@ -18,6 +19,8 @@ pub const World = struct {
     cursor: usize,
     allocator: std.mem.Allocator,
     archetypes: ArchetypeMap,
+    entitiesArchetypes: std.AutoHashMap(Entity, Archetype),
+    root: Archetype,
 
     pub fn createEntity(self: *Self) Entity {
         global_entity_counter += 1;
@@ -26,16 +29,29 @@ pub const World = struct {
         self.cursor += 1;
         self.entities[self.cursor] = created_entity;
 
+        self.root.entities.add(created_entity);
+        self.entitiesArchetypes.putAssumeCapacity(created_entity, self.root);
+
         return created_entity;
     }
 
-    pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
+    pub fn attach(self: *Self, entity: Entity, component: anytype) void {
+        var archetype = self.entitiesArchetypes.get(entity);
+        if (archetype == null) return;
+        // archetype
+
         _ = component;
-        _ = entity;
-        _ = self;
     }
 
-    pub fn init(alloc: std.mem.Allocator) Self {
-        return Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc) };
+    pub fn init(alloc: std.mem.Allocator) !Self {
+        var rootArchetype = createArchetype(.{});
+
+        var entitiesArchetypes = std.AutoHashMap(Entity, Archetype).init(alloc);
+        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+
+        var world = Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes };
+        try world.archetypes.put(rootArchetype.mask, rootArchetype);
+
+        return world;
     }
 };

@@ -18,7 +18,7 @@ pub fn hash(ids: []u64) ArchetypeMask {
     return hash_value;
 }
 
-pub fn hashComponentsIds(comptime comps: anytype) ArchetypeMask {
+pub fn hashComponentsIds(comps: anytype) ArchetypeMask {
     const fields = std.meta.fields(@TypeOf(comps));
     var ids: [100]u64 = undefined;
 
@@ -30,6 +30,11 @@ pub fn hashComponentsIds(comptime comps: anytype) ArchetypeMask {
     return hash(ids[0..fields.len]);
 }
 
-pub fn archetype(comptime comps: anytype) Archetype {
-    return Archetype{ .mask = hashComponentsIds(comps), .entities = SparseSet(Entity){} };
+pub fn createArchetype(comps: anytype) Archetype {
+    // std.bit_set.
+    // std.bit_set.DynamicBitSet
+    return Archetype{
+        .mask = hashComponentsIds(comps),
+        .entities = SparseSet(Entity){},
+    };
 }
