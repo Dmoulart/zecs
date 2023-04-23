@@ -1,30 +1,35 @@
 const std = @import("std");
 const Component = @import("./component.zig").Component;
 
-const HASH_BASE: u128 = 133562;
-const HASH_ENTROPY: u128 = 423052;
+pub const ArchetypeMask = u128;
 
-pub fn hash(ids: []u64) u128 {
-    var hash_value: u128 = HASH_BASE;
+const HASH_BASE: ArchetypeMask = 133562;
+const HASH_ENTROPY: ArchetypeMask = 423052;
+
+pub const Archetype = struct {
+    mask: u128,
+};
+
+pub fn hash(ids: []u64) ArchetypeMask {
+    var hash_value: ArchetypeMask = HASH_BASE;
     for (ids) |id| {
         hash_value = (hash_value ^ id) * HASH_ENTROPY;
     }
     return hash_value;
 }
 
-// pub const Type = struct {
-//     components: *Component(type),
-// };
+pub fn hashComponentsIds(comptime comps: anytype) ArchetypeMask {
+    const fields = std.meta.fields(@TypeOf(comps));
+    var ids: [100]u64 = undefined;
 
-const Archetype = struct {
-    components: []type,
-};
-
-pub fn Type(comps: anytype) type {
-    var components: []type = undefined;
-    _ = components;
-    for (std.meta.fields(@TypeOf(comps))) |field| {
+    inline for (fields) |field, i| {
         var comp = @field(comps, field.name);
-        _ = comp;
+        ids[i] = comp.id;
     }
+
+    return hash(ids[0..fields.len]);
+}
+
+pub fn archetype(comptime comps: anytype) Archetype {
+    return Archetype{ .mask = hashComponentsIds(comps) };
 }

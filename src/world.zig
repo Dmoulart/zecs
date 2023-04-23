@@ -1,35 +1,23 @@
 const std = @import("std");
 const Component = @import("./component.zig").Component;
-const Type = @import("./archetype.zig").Type;
+const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
+const Archetype = @import("./archetype.zig").Archetype;
 
-var global_entity_counter: u128 = 0;
+var global_entity_counter: Entity = 0;
 
-// pub fn World(comptime capacity: comptime_int) type {
-//     return struct {
-//         const Self = @This();
-//         capacity: u128 = capacity,
-//         entities: [capacity]u128 = undefined,
-//         cursor: u128 = 0,
+pub const Entity = u64;
 
-//         pub fn entity(self: *Self) u128 {
-//             global_entity_counter += 1;
-//             var created_entity = global_entity_counter;
-//             self.cursor += 1;
-//             self.entities[@as(usize, self.cursor)] = created_entity;
-//             return created_entity;
-//         }
-//     };
-// }
+const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
 
 pub const World = struct {
     const Self = @This();
     capacity: u128,
-    entities: [10000]u128 = undefined,
+    entities: [10000]Entity = undefined,
     cursor: usize,
     allocator: std.mem.Allocator,
-    types: std.AutoHashMap(u128, Type),
+    archetypes: ArchetypeMap,
 
-    pub fn createEntity(self: *Self) u128 {
+    pub fn createEntity(self: *Self) Entity {
         global_entity_counter += 1;
         var created_entity = global_entity_counter;
 
@@ -39,33 +27,13 @@ pub const World = struct {
         return created_entity;
     }
 
-    pub fn attach(self: *Self, entity: u128, comptime component: type) void {
+    pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
         _ = component;
         _ = entity;
         _ = self;
     }
 
-    // pub fn create(alloc: std.mem.Allocator) !*Self {
-    //     var world = try alloc.create(World);
-
-    //     world.allocator = alloc;
-    //     world.types = std.AutoHashMap(u128, Type).init(alloc);
-    //     world.capacity = 0;
-    //     world.cursor = 0;
-    //     world.entities = undefined;
-
-    //     return world;
-    // }
-
-    pub fn create(alloc: std.mem.Allocator) !*Self {
-        var world = try alloc.create(World);
-
-        world.allocator = alloc;
-        world.types = std.AutoHashMap(u128, Type).init(alloc);
-        world.capacity = 0;
-        world.cursor = 0;
-        world.entities = undefined;
-
-        return world;
+    pub fn init(alloc: std.mem.Allocator) Self {
+        return Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc) };
     }
 };
