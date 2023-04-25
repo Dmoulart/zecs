@@ -19,39 +19,6 @@ pub const Archetype = struct {
     edge: ArchetypeEdge,
 };
 
-pub fn hash(ids: []u64) ArchetypeMask {
-    var hash_value: ArchetypeMask = HASH_BASE;
-    for (ids) |id| {
-        hash_value = (hash_value ^ id) * HASH_ENTROPY;
-    }
-    return hash_value;
-}
-
-pub fn hashComponentsIds(comps: anytype) ArchetypeMask {
-    const fields = std.meta.fields(@TypeOf(comps));
-    var ids: [100]u64 = undefined;
-
-    inline for (fields) |field, i| {
-        var comp = @field(comps, field.name);
-        ids[i] = comp.id;
-    }
-
-    return hash(ids[0..fields.len]);
-}
-
-pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
-    const fields = std.meta.fields(@TypeOf(comps));
-
-    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 10_000);
-
-    inline for (fields) |field| {
-        var comp = @field(comps, field.name);
-        mask.set(@as(usize, comp.id));
-    }
-
-    return mask;
-}
-
 pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     var mask = try generateComponentsMask(comps, alloc);
     var edge = ArchetypeEdge.init(alloc);
@@ -83,3 +50,36 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
 
     return newArchetype;
 }
+
+pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
+    const fields = std.meta.fields(@TypeOf(comps));
+
+    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 10_000);
+
+    inline for (fields) |field| {
+        var comp = @field(comps, field.name);
+        mask.set(@as(usize, comp.id));
+    }
+
+    return mask;
+}
+
+// pub fn hash(ids: []u64) ArchetypeMask {
+//     var hash_value: ArchetypeMask = HASH_BASE;
+//     for (ids) |id| {
+//         hash_value = (hash_value ^ id) * HASH_ENTROPY;
+//     }
+//     return hash_value;
+// }
+
+// pub fn hashComponentsIds(comps: anytype) ArchetypeMask {
+//     const fields = std.meta.fields(@TypeOf(comps));
+//     var ids: [100]u64 = undefined;
+
+//     inline for (fields) |field, i| {
+//         var comp = @field(comps, field.name);
+//         ids[i] = comp.id;
+//     }
+
+//     return hash(ids[0..fields.len]);
+// }
