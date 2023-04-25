@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = @import("std").debug.assert;
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
@@ -25,6 +26,17 @@ pub const World = struct {
     entitiesArchetypes: std.AutoHashMap(Entity, Archetype),
     root: Archetype,
 
+    pub fn init(alloc: std.mem.Allocator) !Self {
+        var rootArchetype = try buildArchetype(.{}, alloc);
+
+        var entitiesArchetypes = std.AutoHashMap(Entity, Archetype).init(alloc);
+        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+
+        var world = Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes };
+
+        return world;
+    }
+
     pub fn createEntity(self: *Self) Entity {
         global_entity_counter += 1;
         var created_entity = global_entity_counter;
@@ -43,44 +55,31 @@ pub const World = struct {
         return arch.mask.isSet(component.id);
     }
 
-    pub fn init(alloc: std.mem.Allocator) !Self {
-        var rootArchetype = try buildArchetype(.{}, alloc);
-
-        var entitiesArchetypes = std.AutoHashMap(Entity, Archetype).init(alloc);
-        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
-
-        var world = Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes };
-
-        return world;
-    }
-
     pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
-        if (!self.has(entity, component)) {
-            try self.toggleComponent(entity, component);
-        }
+        assert(!self.has(entity, component));
+        try self.toggleComponent(entity, component);
     }
 
     pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
-        if (self.has(entity, component)) {
-            try self.toggleComponent(entity, component);
-        }
+        assert(self.has(entity, component));
+        try self.toggleComponent(entity, component);
     }
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) !void {
         var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        if (archetype.edge.contains(component.id)) {
-            var adjacent = archetype.edge.get(component.id) orelse unreachable;
-            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
+        var newArchetype = if (archetype.edge.contains(component.id))
+            archetype.edge.get(component.id) orelse unreachable
+        else
+            try deriveArchetype(&archetype, component.id, self.allocator);
 
-            _ = archetype.entities.remove(entity);
-            adjacent.entities.add(entity);
-        } else {
-            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
-            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
+        self.swapArchetypes(entity, &archetype, &newArchetype);
+    }
 
-            _ = archetype.entities.remove(entity);
-            newArchetype.entities.add(entity);
-        }
+    fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
+        self.entitiesArchetypes.putAssumeCapacity(entity, new.*);
+
+        _ = old.*.entities.remove(entity);
+        new.*.entities.add(entity);
     }
 };
