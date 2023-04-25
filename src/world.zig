@@ -51,17 +51,23 @@ pub const World = struct {
     }
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
+        assert(self.entitiesArchetypes.contains(entity));
+
         var arch: Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
         return arch.mask.isSet(component.id);
     }
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
+        assert(self.entitiesArchetypes.contains(entity));
         assert(!self.has(entity, component));
+
         try self.toggleComponent(entity, component);
     }
 
     pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
+        assert(self.entitiesArchetypes.contains(entity));
         assert(self.has(entity, component));
+
         try self.toggleComponent(entity, component);
     }
 
