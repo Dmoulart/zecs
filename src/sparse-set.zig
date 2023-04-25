@@ -40,7 +40,7 @@ pub fn SparseSet(comptime T: type) type {
 }
 
 test "Add to sparseset" {
-    var sset = SparseSet(u32, 10_000){};
+    var sset = SparseSet(u32){};
     sset.add(1);
     try expect(sset.has(1));
     try expect(!sset.has(2));
@@ -58,7 +58,7 @@ test "Add to sparseset" {
 }
 
 test "Remove from sparseset" {
-    var sset = SparseSet(u32, 10_000){};
+    var sset = SparseSet(u32){};
 
     sset.add(1);
     try expect(sset.remove(1));

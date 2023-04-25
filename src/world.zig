@@ -2,7 +2,10 @@ const std = @import("std");
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
-const createArchetype = @import("./archetype.zig").createArchetype;
+const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
+const SparseSet = @import("./sparse-set.zig").SparseSet;
+const buildArchetype = @import("./archetype.zig").buildArchetype;
+const deriveArchetype = @import("./archetype.zig").deriveArchetype;
 
 var global_entity_counter: Entity = 0;
 
@@ -35,22 +38,56 @@ pub const World = struct {
         return created_entity;
     }
 
-    pub fn attach(self: *Self, entity: Entity, component: anytype) void {
-        var archetype = self.entitiesArchetypes.get(entity);
-        if (archetype == null) return;
-        // archetype
+    pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
+        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        _ = component;
+        if (archetype.edge.contains(component.id)) {
+            var adjacent = archetype.edge.get(component.id) orelse unreachable;
+            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
+
+            _ = archetype.entities.remove(entity);
+            adjacent.entities.add(entity);
+        } else {
+            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
+
+            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
+
+            _ = archetype.entities.remove(entity);
+            newArchetype.entities.add(entity);
+        }
+    }
+
+    pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
+        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+
+        if (archetype.edge.contains(component.id)) {
+            var adjacent = archetype.edge.get(component.id) orelse unreachable;
+            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
+
+            _ = archetype.entities.remove(entity);
+            adjacent.entities.add(entity);
+        } else {
+            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
+
+            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
+
+            _ = archetype.entities.remove(entity);
+            newArchetype.entities.add(entity);
+        }
+    }
+
+    pub fn has(self: *Self, entity: Entity, component: anytype) bool {
+        var arch: Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+        return arch.mask.isSet(component.id);
     }
 
     pub fn init(alloc: std.mem.Allocator) !Self {
-        var rootArchetype = createArchetype(.{});
+        var rootArchetype = try buildArchetype(.{}, alloc);
 
         var entitiesArchetypes = std.AutoHashMap(Entity, Archetype).init(alloc);
         try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
         var world = Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes };
-        try world.archetypes.put(rootArchetype.mask, rootArchetype);
 
         return world;
     }
