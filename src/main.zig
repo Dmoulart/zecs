@@ -70,3 +70,20 @@ test "Can detach component" {
     try world.detach(ent, Velocity);
     try expect(!world.has(ent, Velocity));
 }
+
+test "Can query" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(arena.child_allocator);
+    var ent = world.createEntity();
+
+    try world.attach(ent, Position);
+    try world.attach(ent, Velocity);
+
+    var positions = world.entities().with(Position).query(&world);
+    _ = positions;
+}
