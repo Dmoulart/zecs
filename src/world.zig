@@ -38,44 +38,6 @@ pub const World = struct {
         return created_entity;
     }
 
-    pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
-        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
-
-        if (archetype.edge.contains(component.id)) {
-            var adjacent = archetype.edge.get(component.id) orelse unreachable;
-            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
-
-            _ = archetype.entities.remove(entity);
-            adjacent.entities.add(entity);
-        } else {
-            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
-
-            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
-
-            _ = archetype.entities.remove(entity);
-            newArchetype.entities.add(entity);
-        }
-    }
-
-    pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
-        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
-
-        if (archetype.edge.contains(component.id)) {
-            var adjacent = archetype.edge.get(component.id) orelse unreachable;
-            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
-
-            _ = archetype.entities.remove(entity);
-            adjacent.entities.add(entity);
-        } else {
-            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
-
-            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
-
-            _ = archetype.entities.remove(entity);
-            newArchetype.entities.add(entity);
-        }
-    }
-
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
         var arch: Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
         return arch.mask.isSet(component.id);
@@ -90,5 +52,35 @@ pub const World = struct {
         var world = Self{ .allocator = alloc, .entities = undefined, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes };
 
         return world;
+    }
+
+    pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
+        if (!self.has(entity, component)) {
+            try self.toggleComponent(entity, component);
+        }
+    }
+
+    pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
+        if (self.has(entity, component)) {
+            try self.toggleComponent(entity, component);
+        }
+    }
+
+    fn toggleComponent(self: *Self, entity: Entity, component: anytype) !void {
+        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+
+        if (archetype.edge.contains(component.id)) {
+            var adjacent = archetype.edge.get(component.id) orelse unreachable;
+            self.entitiesArchetypes.putAssumeCapacity(entity, adjacent);
+
+            _ = archetype.entities.remove(entity);
+            adjacent.entities.add(entity);
+        } else {
+            var newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
+            self.entitiesArchetypes.putAssumeCapacity(entity, newArchetype);
+
+            _ = archetype.entities.remove(entity);
+            newArchetype.entities.add(entity);
+        }
     }
 };

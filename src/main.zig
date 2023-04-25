@@ -54,14 +54,19 @@ test "Can detach component" {
 
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
-    _ = Velocity;
 
     var world = try World.init(arena.child_allocator);
     var ent = world.createEntity();
 
     try world.attach(ent, Position);
+    try world.attach(ent, Velocity);
     try expect(world.has(ent, Position));
+    try expect(world.has(ent, Velocity));
 
     try world.detach(ent, Position);
     try expect(!world.has(ent, Position));
+    try expect(world.has(ent, Velocity));
+
+    try world.detach(ent, Velocity);
+    try expect(!world.has(ent, Velocity));
 }

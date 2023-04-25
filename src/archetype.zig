@@ -66,7 +66,8 @@ pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
 
 pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
     var mask = try archetype.mask.clone(allocator);
-    mask.set(id);
+
+    mask.toggle(id);
 
     var newArchetype = Archetype{
         .mask = mask,
