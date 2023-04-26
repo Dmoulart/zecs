@@ -95,8 +95,6 @@ test "Query can target argetype" {
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
-    const Velocity = defineComponent(Vector);
-    _ = Velocity;
 
     var world = try World.init(arena.child_allocator);
     var ent = world.createEntity();
@@ -106,4 +104,20 @@ test "Query can target argetype" {
     var query = try world.entities().with(Position).query(&world);
 
     try expect(query.archetypes[0] == &world.archetypes.items[1]);
+}
+
+test "Can iterate over queries" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+
+    var world = try World.init(arena.child_allocator);
+    var ent = world.createEntity();
+
+    try world.attach(ent, Position);
+
+    var query = try world.entities().with(Position).query(&world);
+
+    try expect(query.archetypes[0].entities.has(ent));
 }

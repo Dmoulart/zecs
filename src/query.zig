@@ -2,6 +2,7 @@ const std = @import("std");
 const print = @import("std").debug.print;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
+const Entity = @import("./world.zig").Entity;
 
 fn numMasks(bit_length: usize) usize {
     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
@@ -21,6 +22,14 @@ pub const Query = struct {
     mask: std.bit_set.DynamicBitSet,
 
     archetypes: []*Archetype,
+
+    pub fn each(self: *Self, function: fn (entity: Entity) void) void {
+        for (self.archetypes) |arch| {
+            for (arch.values) |entity| {
+                function(entity);
+            }
+        }
+    }
 
     fn execute(self: *Self, world: *World) void {
         var archetypes: [100]*Archetype = undefined;
@@ -45,7 +54,7 @@ pub const QueryBuilder = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        var mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 10);
+        var mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 40);
 
         return QueryBuilder{
             .mask = mask,

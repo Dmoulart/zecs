@@ -68,14 +68,12 @@ pub const World = struct {
     }
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
-        assert(self.exists(entity));
         assert(!self.has(entity, component));
 
         try self.toggleComponent(entity, component);
     }
 
     pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
-        assert(self.exists(entity));
         assert(self.has(entity, component));
 
         try self.toggleComponent(entity, component);
