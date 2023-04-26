@@ -8,6 +8,6 @@ pub fn Component(comptime T: type) type {
 }
 
 pub fn defineComponent(comptime T: type) Component(T) {
-    global_component_counter = global_component_counter * 2;
+    global_component_counter += 1;
     return Component(T){ .id = global_component_counter };
 }

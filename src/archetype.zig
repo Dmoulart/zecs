@@ -54,7 +54,7 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
 pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
     const fields = std.meta.fields(@TypeOf(comps));
 
-    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 100);
+    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 10);
 
     inline for (fields) |field| {
         var comp = @field(comps, field.name);

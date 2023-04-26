@@ -24,7 +24,7 @@ pub const World = struct {
     // entities: [DEFAULT_WORLD_CAPACITY]Entity = undefined,
     cursor: usize,
     allocator: std.mem.Allocator,
-    archetypes: ArchetypeMap,
+    archetypes: std.ArrayList(Archetype),
     entitiesArchetypes: std.AutoHashMap(Entity, Archetype),
     root: Archetype,
     queryBuilder: QueryBuilder,
@@ -37,7 +37,8 @@ pub const World = struct {
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = ArchetypeMap.init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        try world.addArchetype(&rootArchetype);
         // world.queryBuilder.world = world;
         return world;
     }
@@ -87,10 +88,14 @@ pub const World = struct {
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) !void {
         var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        var newArchetype = if (archetype.edge.contains(component.id))
-            archetype.edge.get(component.id) orelse unreachable
-        else
-            try deriveArchetype(&archetype, component.id, self.allocator);
+        var newArchetype: Archetype = undefined;
+
+        if (archetype.edge.contains(component.id)) {
+            newArchetype = archetype.edge.get(component.id) orelse unreachable;
+        } else {
+            newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
+            try self.addArchetype(&newArchetype);
+        }
 
         self.swapArchetypes(entity, &archetype, &newArchetype);
     }
@@ -100,5 +105,9 @@ pub const World = struct {
 
         _ = old.*.entities.remove(entity);
         new.*.entities.add(entity);
+    }
+
+    fn addArchetype(self: *Self, archetype: *Archetype) !void {
+        try self.archetypes.append(archetype.*);
     }
 };
