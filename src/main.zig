@@ -113,7 +113,7 @@ test "Query can target argetype" {
 
     var query = try world.entities().with(Position).query(&world);
 
-    try expect(query.archetypes[0] == &world.archetypes.items[1]);
+    try expect(query.archetypesList.items[0] == &world.archetypes.items[1]);
 }
 
 test "Can iterate over queries" {
@@ -130,6 +130,6 @@ test "Can iterate over queries" {
     try world.attach(ent, Position);
 
     var query = try world.entities().with(Position).query(&world);
-
-    try expect(query.archetypes[0].entities.has(ent));
+    std.debug.print("ents {}", .{query.archetypesList.items[0].entities.count});
+    try expect(query.archetypesList.items[0].entities.has(ent));
 }

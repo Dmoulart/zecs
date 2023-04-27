@@ -33,20 +33,21 @@ pub const Query = struct {
     }
 
     fn execute(self: *Self, world: *World) void {
-        var archetypes: [20]*Archetype = undefined;
+        // var archetypes: [20]*Archetype = undefined;
         // self.archetypesList = std.ArrayList(*Archetype).init(world.*.allocator);
 
-        var last_added: usize = 0;
+        // var last_added: usize = 0;
+        // _ = last_added;
 
         for (world.archetypes.items) |*arch| {
             if (intersects(&arch.mask, &self.mask)) {
-                // _ = self.archetypesList.append(arch) catch null;
-                archetypes[last_added] = arch;
-                last_added += 1;
+                _ = self.archetypesList.append(arch) catch null;
+                // archetypes[last_added] = arch;
+                // last_added += 1;
             }
         }
 
-        self.archetypes = archetypes[0..archetypes.len];
+        // self.archetypes = archetypes[0..archetypes.len];
     }
 };
 
@@ -74,7 +75,7 @@ pub const QueryBuilder = struct {
     }
 
     pub fn query(self: *Self, world: *World) !Query {
-        var created_query = Query{ .mask = self.mask, .archetypes = undefined, .archetypesList = undefined };
+        var created_query = Query{ .mask = self.mask, .archetypes = undefined, .archetypesList = std.ArrayList(*Archetype).init(world.allocator) };
         created_query.execute(world);
         return created_query;
     }
