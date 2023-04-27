@@ -24,6 +24,8 @@ pub fn main() !void {
     _ = transform;
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
     try world.attach(ent, Position);
 
@@ -38,6 +40,8 @@ test "Can attach component" {
     const Velocity = defineComponent(Vector);
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
 
     try world.attach(ent, Position);
@@ -58,6 +62,8 @@ test "Can detach component" {
     const Velocity = defineComponent(Vector);
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
 
     try world.attach(ent, Position);
@@ -81,6 +87,8 @@ test "Can generate archetype" {
     const Velocity = defineComponent(Vector);
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
 
     try world.attach(ent, Position);
@@ -97,6 +105,8 @@ test "Query can target argetype" {
     const Position = defineComponent(Vector);
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
 
     try world.attach(ent, Position);
@@ -113,6 +123,8 @@ test "Can iterate over queries" {
     const Position = defineComponent(Vector);
 
     var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
     var ent = world.createEntity();
 
     try world.attach(ent, Position);

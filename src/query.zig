@@ -54,12 +54,14 @@ pub const QueryBuilder = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        var mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 40);
-
         return QueryBuilder{
-            .mask = mask,
+            .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 40),
             .allocator = allocator,
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.mask.deinit();
     }
 
     pub fn with(self: *Self, component: anytype) *Self {

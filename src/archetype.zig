@@ -14,17 +14,25 @@ const HASH_ENTROPY: ArchetypeMask = 423052;
 pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
 
 pub const Archetype = struct {
+    const Self = @This();
+
     mask: ArchetypeMask2,
     entities: SparseSet(Entity),
     edge: ArchetypeEdge,
+
+    pub fn deinit(self: *Self) void {
+        self.mask.deinit();
+        self.edge.deinit();
+    }
 };
 
 pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     var mask = try generateComponentsMask(comps, alloc);
-    var edge = ArchetypeEdge.init(alloc);
-    try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+    // var edge = ArchetypeEdge.init(alloc);
+    // _ = edge;
+    // try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    return Archetype{ .mask = mask, .entities = SparseSet(Entity){}, .edge = edge };
+    return Archetype{ .mask = mask, .entities = SparseSet(Entity){}, .edge = ArchetypeEdge.init(alloc) };
 }
 
 pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
@@ -38,11 +46,11 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
         .edge = ArchetypeEdge.init(allocator),
     };
 
-    try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
-    try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+    // try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+    // try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    archetype.edge.putAssumeCapacity(id, &newArchetype);
-    newArchetype.edge.putAssumeCapacity(id, archetype);
+    _ = archetype.edge.put(id, &newArchetype) catch null;
+    _ = newArchetype.edge.put(id, archetype) catch null;
 
     return newArchetype;
 }

@@ -31,7 +31,7 @@ pub const World = struct {
 
     pub fn init(alloc: std.mem.Allocator) !Self {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
-        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+        // try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
@@ -40,6 +40,15 @@ pub const World = struct {
         try world.archetypes.append(rootArchetype);
         // world.queryBuilder.world = world;
         return world;
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.archetypes.items) |*arch| {
+            arch.deinit();
+        }
+        self.archetypes.deinit();
+        self.entitiesArchetypes.deinit();
+        self.queryBuilder.deinit();
     }
 
     pub fn createEntity(self: *Self) Entity {
@@ -51,7 +60,7 @@ pub const World = struct {
 
         var root = self.getRootArchetype();
         root.entities.add(created_entity);
-        self.entitiesArchetypes.putAssumeCapacity(created_entity, root);
+        _ = self.entitiesArchetypes.put(created_entity, root) catch null;
 
         return created_entity;
     }
