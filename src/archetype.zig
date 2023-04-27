@@ -11,7 +11,7 @@ pub const ArchetypeMask2 = std.bit_set.DynamicBitSet;
 const HASH_BASE: ArchetypeMask = 133562;
 const HASH_ENTROPY: ArchetypeMask = 423052;
 
-pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, Archetype);
+pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
 
 pub const Archetype = struct {
     mask: ArchetypeMask2,
@@ -24,15 +24,11 @@ pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     var edge = ArchetypeEdge.init(alloc);
     try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    return Archetype{
-        .mask = mask,
-        .entities = SparseSet(Entity){},
-        .edge = ArchetypeEdge.init(alloc),
-    };
+    return Archetype{ .mask = mask, .entities = SparseSet(Entity){}, .edge = edge };
 }
 
 pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
-    var mask = try archetype.mask.clone(allocator);
+    var mask: ArchetypeMask2 = try archetype.mask.clone(allocator);
 
     mask.toggle(id);
 
@@ -45,8 +41,8 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
     try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
     try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    archetype.edge.putAssumeCapacity(id, newArchetype);
-    newArchetype.edge.putAssumeCapacity(id, archetype.*);
+    archetype.edge.putAssumeCapacity(id, &newArchetype);
+    newArchetype.edge.putAssumeCapacity(id, archetype);
 
     return newArchetype;
 }
@@ -54,7 +50,7 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
 pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
     const fields = std.meta.fields(@TypeOf(comps));
 
-    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 40);
+    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 50);
 
     inline for (fields) |field| {
         var comp = @field(comps, field.name);

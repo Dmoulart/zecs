@@ -25,20 +25,19 @@ pub const World = struct {
     cursor: usize,
     allocator: std.mem.Allocator,
     archetypes: std.ArrayList(Archetype),
-    entitiesArchetypes: std.AutoHashMap(Entity, Archetype),
-    root: Archetype,
+    entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
+
     queryBuilder: QueryBuilder,
 
     pub fn init(alloc: std.mem.Allocator) !Self {
-        var rootArchetype = try buildArchetype(.{}, alloc);
-
-        var entitiesArchetypes = std.AutoHashMap(Entity, Archetype).init(alloc);
+        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
         try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .root = rootArchetype, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
-        try world.addArchetype(&rootArchetype);
+        var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var rootArchetype = try buildArchetype(.{}, alloc);
+        try world.archetypes.append(rootArchetype);
         // world.queryBuilder.world = world;
         return world;
     }
@@ -50,16 +49,21 @@ pub const World = struct {
         self.cursor += 1;
         // self.entities[self.cursor] = created_entity;
 
-        self.root.entities.add(created_entity);
-        self.entitiesArchetypes.putAssumeCapacity(created_entity, self.root);
+        var root = self.getRootArchetype();
+        root.entities.add(created_entity);
+        self.entitiesArchetypes.putAssumeCapacity(created_entity, root);
 
         return created_entity;
+    }
+
+    fn getRootArchetype(self: *Self) *Archetype {
+        return &self.archetypes.items[0];
     }
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
         assert(self.exists(entity));
 
-        var arch: Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+        var arch = self.entitiesArchetypes.get(entity) orelse unreachable;
         return arch.mask.isSet(component.id);
     }
 
@@ -86,20 +90,18 @@ pub const World = struct {
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) !void {
         var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        var newArchetype: Archetype = undefined;
-
         if (archetype.edge.contains(component.id)) {
-            newArchetype = archetype.edge.get(component.id) orelse unreachable;
+            var edgeArchetype = archetype.edge.get(component.id) orelse unreachable;
+            self.swapArchetypes(entity, archetype, edgeArchetype);
         } else {
-            newArchetype = try deriveArchetype(&archetype, component.id, self.allocator);
+            var newArchetype = try deriveArchetype(archetype, component.id, self.allocator);
             try self.addArchetype(&newArchetype);
+            self.swapArchetypes(entity, archetype, &newArchetype);
         }
-
-        self.swapArchetypes(entity, &archetype, &newArchetype);
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        self.entitiesArchetypes.putAssumeCapacity(entity, new.*);
+        self.entitiesArchetypes.putAssumeCapacity(entity, new);
 
         _ = old.*.entities.remove(entity);
         new.*.entities.add(entity);

@@ -31,7 +31,7 @@ pub fn main() !void {
 }
 
 test "Can attach component" {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
@@ -51,7 +51,7 @@ test "Can attach component" {
 }
 
 test "Can detach component" {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
@@ -74,7 +74,7 @@ test "Can detach component" {
 }
 
 test "Can generate archetype" {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
@@ -91,7 +91,7 @@ test "Can generate archetype" {
 }
 
 test "Query can target argetype" {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
@@ -107,7 +107,7 @@ test "Query can target argetype" {
 }
 
 test "Can iterate over queries" {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
