@@ -21,8 +21,7 @@ pub const Query = struct {
 
     mask: std.bit_set.DynamicBitSet,
 
-    archetypes: []*Archetype = undefined,
-    archetypesList: std.ArrayList(*Archetype),
+    archetypes: std.ArrayList(*Archetype),
 
     pub fn each(self: *Self, function: fn (entity: Entity) void) void {
         for (self.archetypes) |arch| {
@@ -32,16 +31,20 @@ pub const Query = struct {
         }
     }
 
+    pub fn deinit(self: *Self) void {
+        self.archetypes.deinit();
+    }
+
     fn execute(self: *Self, world: *World) void {
         // var archetypes: [20]*Archetype = undefined;
-        // self.archetypesList = std.ArrayList(*Archetype).init(world.*.allocator);
+        // self.archetypes = std.ArrayList(*Archetype).init(world.*.allocator);
 
         // var last_added: usize = 0;
         // _ = last_added;
 
         for (world.archetypes.items) |*arch| {
             if (intersects(&arch.mask, &self.mask)) {
-                _ = self.archetypesList.append(arch) catch null;
+                _ = self.archetypes.append(arch) catch null;
                 // archetypes[last_added] = arch;
                 // last_added += 1;
             }
@@ -75,7 +78,7 @@ pub const QueryBuilder = struct {
     }
 
     pub fn query(self: *Self, world: *World) !Query {
-        var created_query = Query{ .mask = self.mask, .archetypes = undefined, .archetypesList = std.ArrayList(*Archetype).init(world.allocator) };
+        var created_query = Query{ .mask = self.mask, .archetypes = std.ArrayList(*Archetype).init(world.allocator) };
         created_query.execute(world);
         return created_query;
     }
