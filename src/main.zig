@@ -20,16 +20,20 @@ pub fn main() !void {
 
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
-    var transform = try buildArchetype(.{ Position, Velocity }, arena.child_allocator);
-    _ = transform;
+    _ = Velocity;
 
     var world = try World.init(arena.child_allocator);
     defer world.deinit();
 
     var ent = world.createEntity();
+    std.debug.print("\n POS ID {}", .{Position.id});
     try world.attach(ent, Position);
 
-    std.debug.print("ent {}", .{ent});
+    var arch = world.entitiesArchetypes.get(ent) orelse unreachable;
+    std.debug.print("\narch mask is set outside of fun {}", .{arch.mask.isSet(Position.id)});
+    // world.has(ent, Position);
+
+    std.debug.print("\nent has pos {}", .{world.has(ent, Position)});
 }
 
 test "Can attach component" {
@@ -132,6 +136,6 @@ test "Can iterate over queries" {
 
     var query = try world.entities().with(Position).query(&world);
     defer query.deinit();
-    std.debug.print("ents {}", .{query.archetypes.items[0].entities.count});
+
     try expect(query.archetypes.items[0].entities.has(ent));
 }

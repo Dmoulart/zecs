@@ -23,6 +23,7 @@ pub const Archetype = struct {
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
         self.edge.deinit();
+        self.entities.deinit();
     }
 };
 
@@ -32,25 +33,26 @@ pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     // _ = edge;
     // try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    return Archetype{ .mask = mask, .entities = SparseSet(Entity){}, .edge = ArchetypeEdge.init(alloc) };
+    return Archetype{ .mask = mask, .entities = try SparseSet(Entity).init(alloc), .edge = ArchetypeEdge.init(alloc) };
 }
 
 pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
+    _ = id;
     var mask: ArchetypeMask2 = try archetype.mask.clone(allocator);
-
-    mask.toggle(id);
 
     var newArchetype = Archetype{
         .mask = mask,
-        .entities = SparseSet(Entity){},
+        .entities = try SparseSet(Entity).init(allocator),
         .edge = ArchetypeEdge.init(allocator),
     };
+
+    // newArchetype.mask.toggle(id);
 
     // try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
     // try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    _ = archetype.edge.put(id, &newArchetype) catch null;
-    _ = newArchetype.edge.put(id, archetype) catch null;
+    // _ = archetype.edge.put(id, &newArchetype) catch null;
+    // _ = newArchetype.edge.put(id, archetype) catch null;
 
     return newArchetype;
 }

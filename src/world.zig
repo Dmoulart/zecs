@@ -104,19 +104,24 @@ pub const World = struct {
             self.swapArchetypes(entity, archetype, edgeArchetype);
         } else {
             var newArchetype = try deriveArchetype(archetype, component.id, self.allocator);
-            try self.addArchetype(&newArchetype);
-            self.swapArchetypes(entity, archetype, &newArchetype);
+
+            newArchetype.entities.add(entity);
+            _ = archetype.entities.remove(entity);
+
+            _ = newArchetype.edge.put(component.id, archetype) catch null;
+
+            newArchetype.mask.toggle(component.id);
+            try self.archetypes.append(newArchetype);
+
+            try self.entitiesArchetypes.put(entity, &self.archetypes.items[self.archetypes.items.len - 1]);
+            _ = archetype.edge.put(component.id, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
         }
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
         self.entitiesArchetypes.putAssumeCapacity(entity, new);
 
-        _ = old.*.entities.remove(entity);
-        new.*.entities.add(entity);
-    }
-
-    fn addArchetype(self: *Self, archetype: *Archetype) !void {
-        try self.archetypes.append(archetype.*);
+        _ = old.entities.remove(entity);
+        new.entities.add(entity);
     }
 };
