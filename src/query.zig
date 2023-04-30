@@ -68,10 +68,10 @@ pub const QueryBuilder = struct {
         return self;
     }
 
-    pub fn query(self: *Self) !Query {
-        var created_query = Query{ .mask = try self.mask.clone(self.world.allocator), .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
+    pub fn query(self: *Self) Query {
+        var created_query = Query{ .mask = self.mask.clone(self.world.allocator) catch null orelse unreachable, .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
         self.mask.deinit();
-        self.mask = try std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500);
+        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500) catch null orelse unreachable;
         created_query.execute(self.world);
         return created_query;
     }

@@ -81,15 +81,15 @@ pub const World = struct {
         return self.entitiesArchetypes.contains(entity);
     }
 
-    pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
+    pub fn attach(self: *Self, entity: Entity, component: anytype) void {
         assert(!self.has(entity, component));
-        try self.toggleComponent(entity, component);
+        self.toggleComponent(entity, component);
     }
 
-    pub fn detach(self: *Self, entity: Entity, component: anytype) !void {
+    pub fn detach(self: *Self, entity: Entity, component: anytype) void {
         assert(self.has(entity, component));
 
-        try self.toggleComponent(entity, component);
+        self.toggleComponent(entity, component);
     }
 
     pub fn entities(self: *Self) *QueryBuilder {
@@ -98,14 +98,14 @@ pub const World = struct {
         return &self.queryBuilder;
     }
 
-    fn toggleComponent(self: *Self, entity: Entity, component: anytype) !void {
+    fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
         var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
         if (archetype.edge.contains(component.id)) {
             var edgeArchetype = archetype.edge.get(component.id) orelse unreachable;
             self.swapArchetypes(entity, archetype, edgeArchetype);
         } else {
-            var newArchetype = try deriveArchetype(archetype, component.id, self.allocator);
+            var newArchetype = deriveArchetype(archetype, component.id, self.allocator);
             newArchetype.mask.toggle(component.id);
             newArchetype.entities.add(entity);
             _ = archetype.entities.remove(entity);
@@ -113,9 +113,9 @@ pub const World = struct {
             _ = newArchetype.edge.put(component.id, archetype) catch null;
 
             // newArchetype.mask.toggle(component.id);
-            try self.archetypes.append(newArchetype);
+            _ = self.archetypes.append(newArchetype) catch null;
 
-            try self.entitiesArchetypes.put(entity, &self.archetypes.items[self.archetypes.items.len - 1]);
+            _ = self.entitiesArchetypes.put(entity, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
             _ = archetype.edge.put(component.id, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
         }
     }

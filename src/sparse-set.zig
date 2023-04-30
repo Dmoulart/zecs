@@ -11,11 +11,12 @@ pub fn SparseSet(comptime T: type) type {
         values: []T = undefined,
         count: T = 0,
 
-        pub fn init(allocator: std.mem.Allocator) !Self {
-            var indices = try allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY);
+        pub fn init(allocator: std.mem.Allocator) Self {
+            // holy molly that's crap
+            var indices = allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY) catch null orelse unreachable;
             errdefer allocator.free(indices);
 
-            var values = try allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY);
+            var values = allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY) catch null orelse unreachable;
             errdefer allocator.free(values);
 
             return SparseSet(T){ .allocator = allocator, .indices = indices, .values = values, .count = 0 };

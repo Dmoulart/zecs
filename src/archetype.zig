@@ -33,16 +33,16 @@ pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     // _ = edge;
     // try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    return Archetype{ .mask = mask, .entities = try SparseSet(Entity).init(alloc), .edge = ArchetypeEdge.init(alloc) };
+    return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = ArchetypeEdge.init(alloc) };
 }
 
-pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
+pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) Archetype {
     _ = id;
-    var mask: ArchetypeMask2 = try archetype.mask.clone(allocator);
+    var mask: ArchetypeMask2 = archetype.mask.clone(allocator) catch null orelse unreachable;
 
     var newArchetype = Archetype{
         .mask = mask,
-        .entities = try SparseSet(Entity).init(allocator),
+        .entities = SparseSet(Entity).init(allocator),
         .edge = ArchetypeEdge.init(allocator),
     };
 

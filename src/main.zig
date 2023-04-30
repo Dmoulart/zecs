@@ -27,8 +27,8 @@ pub fn main() !void {
     var ent = world.createEntity();
     var ent2 = world.createEntity();
 
-    try world.attach(ent, Position);
-    try world.attach(ent2, Velocity);
+    world.attach(ent, Position);
+    world.attach(ent2, Velocity);
 
     var query = try world.entities().with(Position).query();
     defer query.deinit();
@@ -49,12 +49,12 @@ test "Can attach component" {
 
     var ent = world.createEntity();
 
-    try world.attach(ent, Position);
+    world.attach(ent, Position);
 
     try expect(world.has(ent, Position));
     try expect(!world.has(ent, Velocity));
 
-    try world.attach(ent, Velocity);
+    world.attach(ent, Velocity);
     try expect(world.has(ent, Position));
     try expect(world.has(ent, Velocity));
 }
@@ -71,16 +71,16 @@ test "Can detach component" {
 
     var ent = world.createEntity();
 
-    try world.attach(ent, Position);
-    try world.attach(ent, Velocity);
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
     try expect(world.has(ent, Position));
     try expect(world.has(ent, Velocity));
 
-    try world.detach(ent, Position);
+    world.detach(ent, Position);
     try expect(!world.has(ent, Position));
     try expect(world.has(ent, Velocity));
 
-    try world.detach(ent, Velocity);
+    world.detach(ent, Velocity);
     try expect(!world.has(ent, Velocity));
 }
 
@@ -96,7 +96,7 @@ test "Can generate archetype" {
 
     var ent = world.createEntity();
 
-    try world.attach(ent, Position);
+    world.attach(ent, Position);
     var mask: std.bit_set.DynamicBitSet = world.archetypes.items[1].mask;
 
     try expect(mask.isSet(Position.id));
@@ -114,9 +114,9 @@ test "Query can target argetype" {
 
     var ent = world.createEntity();
 
-    try world.attach(ent, Position);
+    world.attach(ent, Position);
 
-    var query = try world.entities().with(Position).query();
+    var query = world.entities().with(Position).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0] == &world.archetypes.items[1]);
@@ -135,23 +135,23 @@ test "Can update query reactively" {
     var ent = world.createEntity();
     var ent2 = world.createEntity();
 
-    try world.attach(ent, Position);
-    try world.attach(ent2, Velocity);
+    world.attach(ent, Position);
+    world.attach(ent2, Velocity);
 
-    var query = try world.entities().with(Position).query();
+    var query = world.entities().with(Position).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = try world.entities().with(Velocity).query();
+    var query2 = world.entities().with(Velocity).query();
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
     try expect(query2.archetypes.items[0].entities.has(ent2));
 
-    try world.detach(ent, Position);
-    try world.attach(ent, Velocity);
+    world.detach(ent, Position);
+    world.attach(ent, Velocity);
 
     try expect(query2.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent));
@@ -170,24 +170,24 @@ test "Can query multiple components" {
     var ent = world.createEntity();
     var ent2 = world.createEntity();
 
-    try world.attach(ent, Position);
-    try world.attach(ent, Velocity);
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
 
-    try world.attach(ent2, Position);
+    world.attach(ent2, Position);
 
-    var query = try world.entities().with(Position).with(Velocity).query();
+    var query = world.entities().with(Position).with(Velocity).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = try world.entities().with(Position).query();
+    var query2 = world.entities().with(Position).query();
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
     try expect(query2.archetypes.items[0].entities.has(ent2));
 
-    try world.attach(ent2, Velocity);
+    world.attach(ent2, Velocity);
 
     try expect(query.archetypes.items[0].entities.has(ent2));
     try expect(!query2.archetypes.items[0].entities.has(ent2));
