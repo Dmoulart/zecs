@@ -36,21 +36,11 @@ pub const Query = struct {
     }
 
     fn execute(self: *Self, world: *World) void {
-        // var archetypes: [20]*Archetype = undefined;
-        // self.archetypes = std.ArrayList(*Archetype).init(world.*.allocator);
-
-        // var last_added: usize = 0;
-        // _ = last_added;
-
         for (world.archetypes.items) |*arch| {
             if (intersects(&arch.mask, &self.mask)) {
                 _ = self.archetypes.append(arch) catch null;
-                // archetypes[last_added] = arch;
-                // last_added += 1;
             }
         }
-
-        // self.archetypes = archetypes[0..archetypes.len];
     }
 };
 

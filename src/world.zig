@@ -104,7 +104,7 @@ pub const World = struct {
             self.swapArchetypes(entity, archetype, edgeArchetype);
         } else {
             var newArchetype = try deriveArchetype(archetype, component.id, self.allocator);
-
+        
             newArchetype.entities.add(entity);
             _ = archetype.entities.remove(entity);
 
