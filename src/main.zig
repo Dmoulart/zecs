@@ -30,10 +30,10 @@ pub fn main() !void {
     try world.attach(ent, Position);
     try world.attach(ent2, Velocity);
 
-    var query = try world.entities().with(Position).query(&world);
+    var query = try world.entities().with(Position).query();
     defer query.deinit();
 
-    var query2 = try world.entities().with(Velocity).query(&world);
+    var query2 = try world.entities().with(Velocity).query();
     defer query2.deinit();
 }
 
@@ -116,7 +116,7 @@ test "Query can target argetype" {
 
     try world.attach(ent, Position);
 
-    var query = try world.entities().with(Position).query(&world);
+    var query = try world.entities().with(Position).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0] == &world.archetypes.items[1]);
@@ -138,13 +138,13 @@ test "Can update query reactively" {
     try world.attach(ent, Position);
     try world.attach(ent2, Velocity);
 
-    var query = try world.entities().with(Position).query(&world);
+    var query = try world.entities().with(Position).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = try world.entities().with(Velocity).query(&world);
+    var query2 = try world.entities().with(Velocity).query();
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
@@ -175,13 +175,13 @@ test "Can query multiple components" {
 
     try world.attach(ent2, Position);
 
-    var query = try world.entities().with(Position).with(Velocity).query(&world);
+    var query = try world.entities().with(Position).with(Velocity).query();
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = try world.entities().with(Position).query(&world);
+    var query2 = try world.entities().with(Position).query();
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));

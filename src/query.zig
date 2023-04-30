@@ -53,12 +53,10 @@ pub const QueryBuilder = struct {
 
     mask: std.bit_set.DynamicBitSet,
     allocator: std.mem.Allocator,
+    world: *World,
 
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        return QueryBuilder{
-            .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 150),
-            .allocator = allocator,
-        };
+        return QueryBuilder{ .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 150), .allocator = allocator, .world = undefined };
     }
 
     pub fn deinit(self: *Self) void {
@@ -70,11 +68,11 @@ pub const QueryBuilder = struct {
         return self;
     }
 
-    pub fn query(self: *Self, world: *World) !Query {
-        var created_query = Query{ .mask = try self.mask.clone(world.allocator), .archetypes = std.ArrayList(*Archetype).init(world.allocator) };
+    pub fn query(self: *Self) !Query {
+        var created_query = Query{ .mask = try self.mask.clone(self.world.allocator), .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
         self.mask.deinit();
-        self.mask = try std.bit_set.DynamicBitSet.initEmpty(world.allocator, 500);
-        created_query.execute(world);
+        self.mask = try std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500);
+        created_query.execute(self.world);
         return created_query;
     }
 };

@@ -36,6 +36,7 @@ pub const World = struct {
         var queryBuilder = try QueryBuilder.init(alloc);
 
         var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+
         var rootArchetype = try buildArchetype(.{}, alloc);
         try world.archetypes.append(rootArchetype);
         // world.queryBuilder.world = world;
@@ -92,6 +93,8 @@ pub const World = struct {
     }
 
     pub fn entities(self: *Self) *QueryBuilder {
+        // oh man thats craap
+        self.queryBuilder.world = self;
         return &self.queryBuilder;
     }
 
