@@ -122,7 +122,7 @@ test "Query can target argetype" {
     try expect(query.archetypes.items[0] == &world.archetypes.items[1]);
 }
 
-test "Can iterate over queries" {
+test "Can update query reactively" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -155,4 +155,40 @@ test "Can iterate over queries" {
 
     try expect(query2.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent));
+}
+
+test "Can query multiple components" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    var ent2 = world.createEntity();
+
+    try world.attach(ent, Position);
+    try world.attach(ent, Velocity);
+
+    try world.attach(ent2, Position);
+
+    var query = try world.entities().with(Position).with(Velocity).query(&world);
+    defer query.deinit();
+
+    try expect(query.archetypes.items[0].entities.has(ent));
+    try expect(!query.archetypes.items[0].entities.has(ent2));
+
+    var query2 = try world.entities().with(Position).query(&world);
+    defer query2.deinit();
+
+    try expect(!query2.archetypes.items[0].entities.has(ent));
+    try expect(query2.archetypes.items[0].entities.has(ent2));
+
+    try world.attach(ent2, Velocity);
+
+    try expect(query.archetypes.items[0].entities.has(ent2));
+    try expect(!query2.archetypes.items[0].entities.has(ent2));
 }
