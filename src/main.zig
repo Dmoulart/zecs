@@ -35,9 +35,6 @@ pub fn main() !void {
 
     var query2 = try world.entities().with(Velocity).query(&world);
     defer query2.deinit();
-
-    // std.debug.print("{}", .{query.archetypes.items[0].mask.isSet(Position.id)});
-    std.debug.print("\n query archs len {}", .{query.archetypes.items.len});
 }
 
 test "Can attach component" {
@@ -152,4 +149,10 @@ test "Can iterate over queries" {
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
     try expect(query2.archetypes.items[0].entities.has(ent2));
+
+    try world.detach(ent, Position);
+    try world.attach(ent, Velocity);
+
+    try expect(query2.archetypes.items[0].entities.has(ent));
+    try expect(!query.archetypes.items[0].entities.has(ent));
 }
