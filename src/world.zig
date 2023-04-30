@@ -21,7 +21,6 @@ pub const DEFAULT_WORLD_CAPACITY = 10_000;
 pub const World = struct {
     const Self = @This();
     capacity: u128,
-    cursor: usize,
     allocator: std.mem.Allocator,
     archetypes: std.ArrayList(Archetype),
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
@@ -30,15 +29,13 @@ pub const World = struct {
 
     pub fn init(alloc: std.mem.Allocator) !Self {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
-        // try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .cursor = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var world = Self{ .allocator = alloc, .capacity = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
 
         var rootArchetype = try buildArchetype(.{}, alloc);
         try world.archetypes.append(rootArchetype);
-        // world.queryBuilder.world = world;
         return world;
     }
 
@@ -54,9 +51,6 @@ pub const World = struct {
     pub fn createEntity(self: *Self) Entity {
         global_entity_counter += 1;
         var created_entity = global_entity_counter;
-
-        self.cursor += 1;
-        // self.entities[self.cursor] = created_entity;
 
         var root = self.getRootArchetype();
         root.entities.add(created_entity);
@@ -122,7 +116,7 @@ pub const World = struct {
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        self.entitiesArchetypes.putAssumeCapacity(entity, new);
+        _ = self.entitiesArchetypes.put(entity, new) catch null;
 
         _ = old.entities.remove(entity);
         new.entities.add(entity);

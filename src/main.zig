@@ -26,15 +26,34 @@ pub fn main() !void {
 
     var ent = world.createEntity();
     var ent2 = world.createEntity();
+    var ent3 = world.createEntity();
+    var ent4 = world.createEntity();
+
+    std.debug.print("\nent1 {}", .{ent});
+    std.debug.print("\nent2 {}", .{ent2});
 
     world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.entities().with(Position).query();
+    world.attach(ent3, Position);
+    world.attach(ent3, Velocity);
+
+    world.attach(ent4, Position);
+    world.attach(ent4, Velocity);
+
+    var query = world.entities().with(Position).with(Velocity).query();
     defer query.deinit();
 
-    var query2 = world.entities().with(Velocity).query();
-    defer query2.deinit();
+    var iterator = query.iterator();
+    var counter: i32 = 0;
+
+    while (iterator.next()) |entity| {
+        std.debug.print("\nent {}", .{entity});
+        counter += 1;
+    }
 }
 
 test "Can attach component" {
@@ -191,4 +210,59 @@ test "Can query multiple components" {
 
     try expect(query.archetypes.items[0].entities.has(ent2));
     try expect(!query2.archetypes.items[0].entities.has(ent2));
+}
+
+test "Can iterate over query " {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    var ent2 = world.createEntity();
+
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    world.attach(ent2, Position);
+    world.attach(ent2, Velocity);
+
+    var query = world.entities().with(Position).with(Velocity).query();
+    defer query.deinit();
+}
+
+test "Can iterate over query using iteraotr " {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    var ent2 = world.createEntity();
+
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    world.attach(ent2, Position);
+    world.attach(ent2, Velocity);
+
+    var query = world.entities().with(Position).with(Velocity).query();
+    defer query.deinit();
+
+    var iterator = query.iterator();
+    var counter: i32 = 0;
+
+    while (iterator.next()) |entity| {
+        std.debug.print("ent {}", .{entity});
+        counter += 1;
+    }
+    try expect(counter == 2);
 }

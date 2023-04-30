@@ -19,6 +19,30 @@ fn intersects(query: *std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitS
     return true;
 }
 
+pub const QueryIterator = struct {
+    const Self = @This();
+    archetypes: *std.ArrayList(*Archetype),
+
+    current_archetype_index: usize = 0,
+    current_entity_index: usize = 0,
+
+    pub fn next(self: *Self) ?Entity {
+        if (self.current_archetype_index < self.archetypes.items.len) {
+            var archetype_entities = self.archetypes.items[self.current_archetype_index].entities;
+            if (self.current_entity_index < archetype_entities.count) {
+                self.current_entity_index += 1;
+                return archetype_entities.values[self.current_entity_index - 1]; // entities start at 1
+            } else {
+                self.current_entity_index = 0;
+                self.current_archetype_index += 1;
+                return self.next();
+            }
+        } else {
+            return null;
+        }
+    }
+};
+
 pub const Query = struct {
     const Self = @This();
 
@@ -32,6 +56,12 @@ pub const Query = struct {
                 function(entity);
             }
         }
+    }
+
+    pub fn iterator(self: *Self) QueryIterator {
+        return QueryIterator{
+            .archetypes = &self.archetypes,
+        };
     }
 
     pub fn deinit(self: *Self) void {
