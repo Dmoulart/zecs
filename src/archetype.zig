@@ -46,8 +46,6 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
         .edge = ArchetypeEdge.init(allocator),
     };
 
-    // newArchetype.mask.toggle(id);
-
     // try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
     // try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
@@ -60,7 +58,7 @@ pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.me
 pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
     const fields = std.meta.fields(@TypeOf(comps));
 
-    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 50);
+    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 500);
 
     inline for (fields) |field| {
         var comp = @field(comps, field.name);

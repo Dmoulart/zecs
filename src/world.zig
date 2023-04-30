@@ -82,7 +82,7 @@ pub const World = struct {
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) !void {
         assert(!self.has(entity, component));
-
+        std.debug.print("\nAttach component {}", .{component.id});
         try self.toggleComponent(entity, component);
     }
 
@@ -104,17 +104,19 @@ pub const World = struct {
             self.swapArchetypes(entity, archetype, edgeArchetype);
         } else {
             var newArchetype = try deriveArchetype(archetype, component.id, self.allocator);
-        
+            newArchetype.mask.toggle(component.id);
             newArchetype.entities.add(entity);
             _ = archetype.entities.remove(entity);
 
             _ = newArchetype.edge.put(component.id, archetype) catch null;
 
-            newArchetype.mask.toggle(component.id);
+            // newArchetype.mask.toggle(component.id);
             try self.archetypes.append(newArchetype);
 
             try self.entitiesArchetypes.put(entity, &self.archetypes.items[self.archetypes.items.len - 1]);
             _ = archetype.edge.put(component.id, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
+            std.debug.print("\n derived arch has pos {}", .{newArchetype.mask.isSet(2)});
+            std.debug.print("\n derived arch has vel {}", .{newArchetype.mask.isSet(4)});
         }
     }
 

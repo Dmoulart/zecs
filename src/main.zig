@@ -20,16 +20,24 @@ pub fn main() !void {
 
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
-    _ = Velocity;
 
     var world = try World.init(arena.child_allocator);
     defer world.deinit();
 
     var ent = world.createEntity();
-    std.debug.print("\n POS ID {}", .{Position.id});
-    try world.attach(ent, Position);
+    var ent2 = world.createEntity();
 
-    // var arch = world.entitiesArchetypes.get(ent) orelse unreachable;
+    try world.attach(ent, Position);
+    try world.attach(ent2, Velocity);
+
+    var query = try world.entities().with(Position).query(&world);
+    defer query.deinit();
+
+    var query2 = try world.entities().with(Velocity).query(&world);
+    defer query2.deinit();
+
+    // std.debug.print("{}", .{query.archetypes.items[0].mask.isSet(Position.id)});
+    std.debug.print("\n query archs len {}", .{query.archetypes.items.len});
 }
 
 test "Can attach component" {
