@@ -30,10 +30,10 @@ pub fn main() !void {
     world.attach(ent, Position);
     world.attach(ent2, Velocity);
 
-    var query = try world.entities().with(Position).query();
+    var query = world.entities().with(Position).query();
     defer query.deinit();
 
-    var query2 = try world.entities().with(Velocity).query();
+    var query2 = world.entities().with(Velocity).query();
     defer query2.deinit();
 }
 

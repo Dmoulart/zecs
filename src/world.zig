@@ -21,7 +21,6 @@ pub const DEFAULT_WORLD_CAPACITY = 10_000;
 pub const World = struct {
     const Self = @This();
     capacity: u128,
-    // entities: [DEFAULT_WORLD_CAPACITY]Entity = undefined,
     cursor: usize,
     allocator: std.mem.Allocator,
     archetypes: std.ArrayList(Archetype),
@@ -83,6 +82,7 @@ pub const World = struct {
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) void {
         assert(!self.has(entity, component));
+
         self.toggleComponent(entity, component);
     }
 
@@ -107,6 +107,7 @@ pub const World = struct {
         } else {
             var newArchetype = deriveArchetype(archetype, component.id, self.allocator);
             newArchetype.mask.toggle(component.id);
+
             newArchetype.entities.add(entity);
             _ = archetype.entities.remove(entity);
 
