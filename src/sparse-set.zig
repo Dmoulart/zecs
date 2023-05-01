@@ -1,7 +1,9 @@
 const std = @import("std");
 const expect = std.testing.expect;
 
-const DEFAULT_SPARSE_SET_CAPACITY = 100;
+const DEFAULT_SPARSE_SET_CAPACITY: u64 = 100_000;
+
+const CAPACITY_GROW_FACTOR: u32 = 100_000;
 
 pub fn SparseSet(comptime T: type) type {
     return struct {
@@ -10,6 +12,7 @@ pub fn SparseSet(comptime T: type) type {
         indices: []T = undefined,
         values: []T = undefined,
         count: T = 0,
+        capacity: u64 = DEFAULT_SPARSE_SET_CAPACITY,
 
         pub fn init(allocator: std.mem.Allocator) Self {
             // holy molly that's crap
@@ -28,6 +31,9 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         pub fn add(self: *Self, value: T) void {
+            if (self.count == self.capacity or value == self.capacity) {
+                self.grow();
+            }
             self.values[self.count] = value;
             self.indices[value] = self.count;
             self.count += 1;
@@ -38,20 +44,24 @@ pub fn SparseSet(comptime T: type) type {
             return index < self.count and self.values[index] == value;
         }
 
-        pub fn remove(self: *Self, value: T) bool {
-            if (!self.has(value)) return false;
+        pub fn remove(self: *Self, value: T) void {
+            if (!self.has(value)) return;
 
             self.count -= 1;
 
             var last = self.values[self.count];
 
-            if (last == value) return true;
+            if (last == value) return;
 
             var index = self.indices[value];
             self.values[index] = last;
             self.indices[last] = index;
+        }
 
-            return true;
+        fn grow(self: *Self) void {
+            self.indices = self.allocator.realloc(self.indices, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
+            self.values = self.allocator.realloc(self.values, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
+            self.capacity += CAPACITY_GROW_FACTOR;
         }
     };
 }

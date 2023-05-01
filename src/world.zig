@@ -17,22 +17,26 @@ pub const Entity = u64;
 const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
 
 pub const DEFAULT_WORLD_CAPACITY = 10_000;
+pub const WORLD_CAPACITY_GROW_FACTOR = 10_000;
 
 pub const World = struct {
     const Self = @This();
-    capacity: u128,
+    capacity: u32 = DEFAULT_WORLD_CAPACITY,
     allocator: std.mem.Allocator,
     archetypes: std.ArrayList(Archetype),
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
+
+    count: u32 = 0,
 
     queryBuilder: QueryBuilder,
 
     pub fn init(alloc: std.mem.Allocator) !Self {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
+        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
 
         var rootArchetype = try buildArchetype(.{}, alloc);
         try world.archetypes.append(rootArchetype);
@@ -49,12 +53,22 @@ pub const World = struct {
     }
 
     pub fn createEntity(self: *Self) Entity {
+        if (self.count == self.capacity) {
+            self.entitiesArchetypes.ensureTotalCapacity(self.capacity + WORLD_CAPACITY_GROW_FACTOR) catch unreachable;
+            self.capacity += WORLD_CAPACITY_GROW_FACTOR;
+        }
+
         global_entity_counter += 1;
+
         var created_entity = global_entity_counter;
 
         var root = self.getRootArchetype();
+
         root.entities.add(created_entity);
-        _ = self.entitiesArchetypes.put(created_entity, root) catch null;
+
+        self.entitiesArchetypes.putAssumeCapacity(created_entity, root);
+
+        self.count += 1;
 
         return created_entity;
     }
@@ -103,22 +117,23 @@ pub const World = struct {
             newArchetype.mask.toggle(component.id);
 
             newArchetype.entities.add(entity);
-            _ = archetype.entities.remove(entity);
+            archetype.entities.remove(entity);
 
             _ = newArchetype.edge.put(component.id, archetype) catch null;
 
             // newArchetype.mask.toggle(component.id);
             _ = self.archetypes.append(newArchetype) catch null;
 
-            _ = self.entitiesArchetypes.put(entity, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
+            self.entitiesArchetypes.putAssumeCapacity(entity, &self.archetypes.items[self.archetypes.items.len - 1]);
             _ = archetype.edge.put(component.id, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
         }
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        _ = self.entitiesArchetypes.put(entity, new) catch null;
+        self.entitiesArchetypes.putAssumeCapacity(entity, new);
 
-        _ = old.entities.remove(entity);
+        old.entities.remove(entity);
+
         new.entities.add(entity);
     }
 };
