@@ -2,7 +2,7 @@ const std = @import("std");
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
-const Entity = @import("./world.zig").Entity;
+const Entity = @import("./entity-storage.zig").Entity;
 const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
 
 pub const ArchetypeMask = std.bit_set.DynamicBitSet;

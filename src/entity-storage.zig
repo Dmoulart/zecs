@@ -42,8 +42,10 @@ pub const EntityStorage = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.entitiesArchetypes.deinit();
-        self.deletedEntities.deinit();
+        self.all.deinit();
+        self.deleted.deinit();
+        // where should we put this?
+        global_entity_counter = 0;
     }
 
     pub fn create(self: *Self, archetype: *Archetype) Entity {
@@ -71,19 +73,19 @@ pub const EntityStorage = struct {
     }
 
     pub fn delete(self: *Self, entity: Entity) void {
-        assert(self.exists(entity));
+        assert(self.contains(entity));
 
-        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+        var archetype = self.all.get(entity) orelse unreachable;
 
         archetype.entities.remove(entity);
-        _ = self.entitiesArchetypes.remove(entity);
+        _ = self.all.remove(entity);
 
-        self.deletedEntities.appendAssumeCapacity(entity);
+        self.deleted.appendAssumeCapacity(entity);
 
         self.count -= 1;
     }
 
-    pub fn exists(self: *Self, entity: Entity) bool {
+    pub fn contains(self: *Self, entity: Entity) bool {
         return self.all.contains(entity);
     }
 

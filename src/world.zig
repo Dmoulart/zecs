@@ -9,10 +9,8 @@ const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").D
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
-
-pub const Entity = u64;
-
-var global_entity_counter: Entity = 0;
+const Entity = @import("./entity-storage.zig").Entity;
+const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 
 const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
 
@@ -25,13 +23,7 @@ pub const World = struct {
 
     archetypes: ArchetypeStorage,
 
-    entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
-
-    deletedEntities: std.ArrayList(Entity),
-
-    capacity: u32 = DEFAULT_WORLD_CAPACITY,
-
-    count: u32 = 0,
+    entities: EntityStorage,
 
     queryBuilder: QueryBuilder,
 
@@ -45,27 +37,23 @@ pub const World = struct {
         var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
         var archetypes_storage_capacity = options.archetypes_capacity;
 
-        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(options.allocator);
-        try entitiesArchetypes.ensureTotalCapacity(capacity);
-
         var archetypes = try ArchetypeStorage.init(.{
             .capacity = archetypes_storage_capacity,
             .archetype_capacity = capacity,
         }, options.allocator);
 
-        var queryBuilder = try QueryBuilder.init(options.allocator);
+        var entities = try EntityStorage.init(.{
+            .allocator = options.allocator,
+            .capacity = capacity,
+        });
 
-        var deletedEntities = std.ArrayList(Entity).init(options.allocator);
-        try deletedEntities.ensureTotalCapacity(capacity);
+        var queryBuilder = try QueryBuilder.init(options.allocator);
 
         var world = Self{
             .allocator = options.allocator,
-            .capacity = capacity,
-            .count = 0,
             .archetypes = archetypes,
-            .entitiesArchetypes = entitiesArchetypes,
+            .entities = entities,
             .queryBuilder = queryBuilder,
-            .deletedEntities = deletedEntities,
         };
 
         return world;
@@ -73,64 +61,28 @@ pub const World = struct {
 
     pub fn deinit(self: *Self) void {
         self.archetypes.deinit();
-        self.entitiesArchetypes.deinit();
+        self.entities.deinit();
         self.queryBuilder.deinit();
-        self.deletedEntities.deinit();
-    }
-
-    pub fn resetEntityCursor() void {
-        global_entity_counter = 0;
     }
 
     pub fn createEntity(self: *Self) Entity {
-        if (self.count == self.capacity) {
-            self.entitiesArchetypes.ensureTotalCapacity(self.capacity + self.getGrowFactor()) catch unreachable;
-            self.capacity += self.getGrowFactor();
-        }
-
-        var created_entity: Entity = undefined;
-
-        if (self.deletedEntities.popOrNull()) |ent| {
-            created_entity = ent;
-        } else {
-            global_entity_counter += 1;
-            created_entity = global_entity_counter;
-        }
-
-        var root = self.archetypes.getRoot();
-
-        root.entities.add(created_entity);
-
-        self.entitiesArchetypes.putAssumeCapacity(created_entity, root);
-
-        self.count += 1;
-
-        return created_entity;
+        return self.entities.create(self.archetypes.getRoot());
     }
 
     pub fn deleteEntity(self: *Self, entity: Entity) void {
-        assert(self.exists(entity));
-
-        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
-
-        archetype.entities.remove(entity);
-        _ = self.entitiesArchetypes.remove(entity);
-
-        self.deletedEntities.appendAssumeCapacity(entity);
-
-        self.count -= 1;
+        self.entities.delete(entity);
     }
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
-        assert(self.exists(entity));
+        assert(self.contains(entity));
 
-        var arch = self.entitiesArchetypes.get(entity) orelse unreachable;
+        var archetype = self.entities.all.get(entity) orelse unreachable;
 
-        return arch.mask.isSet(component.id);
+        return archetype.mask.isSet(component.id);
     }
 
-    pub fn exists(self: *Self, entity: Entity) bool {
-        return self.entitiesArchetypes.contains(entity);
+    pub fn contains(self: *Self, entity: Entity) bool {
+        return self.entities.contains(entity);
     }
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) void {
@@ -145,18 +97,14 @@ pub const World = struct {
         self.toggleComponent(entity, component);
     }
 
-    pub fn entities(self: *Self) *QueryBuilder {
+    pub fn query(self: *Self) *QueryBuilder {
         // oh man thats craap
         self.queryBuilder.world = self;
         return &self.queryBuilder;
     }
 
-    fn getGrowFactor(self: *Self) u32 {
-        return self.capacity;
-    }
-
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
-        var archetype: *Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+        var archetype: *Archetype = self.entities.all.get(entity) orelse unreachable;
 
         if (archetype.edge.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
@@ -168,7 +116,7 @@ pub const World = struct {
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        self.entitiesArchetypes.putAssumeCapacity(entity, new);
+        self.entities.all.putAssumeCapacity(entity, new);
 
         old.entities.remove(entity);
 

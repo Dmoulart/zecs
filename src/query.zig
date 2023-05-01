@@ -2,7 +2,7 @@ const std = @import("std");
 const print = @import("std").debug.print;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
-const Entity = @import("./world.zig").Entity;
+const Entity = @import("./entity-storage.zig").Entity;
 
 fn numMasks(bit_length: usize) usize {
     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
