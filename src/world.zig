@@ -4,8 +4,8 @@ const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
-const ArchetypesStorage = @import("./archetypes-storage.zig").ArchetypesStorage;
-const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetypes-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
+const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
+const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
@@ -23,7 +23,7 @@ pub const World = struct {
 
     allocator: std.mem.Allocator,
 
-    archetypes: ArchetypesStorage,
+    archetypes: ArchetypeStorage,
 
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
 
@@ -48,7 +48,7 @@ pub const World = struct {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(options.allocator);
         try entitiesArchetypes.ensureTotalCapacity(capacity);
 
-        var archetypes = try ArchetypesStorage.init(.{
+        var archetypes = try ArchetypeStorage.init(.{
             .capacity = archetypes_storage_capacity,
             .archetype_capacity = capacity,
         }, options.allocator);
