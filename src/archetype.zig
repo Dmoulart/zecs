@@ -7,7 +7,7 @@ const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
 
 pub const ArchetypeMask = std.bit_set.DynamicBitSet;
 
-const EDGE_CAPACITY: u32 = 10_000;
+const ARCHETYPE_EDGE_CAPACITY: u32 = 10_000;
 
 pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
 
@@ -24,12 +24,12 @@ pub const Archetype = struct {
         self.entities.deinit();
     }
 
-    pub fn build(comps: anytype, alloc: std.mem.Allocator) !Archetype {
-        var mask = try Self.generateComponentsMask(comps, alloc);
-        var edge = ArchetypeEdge.init(alloc);
-        try edge.ensureTotalCapacity(EDGE_CAPACITY);
+    pub fn build(comps: anytype, allocator: std.mem.Allocator) !Archetype {
+        var mask = try Self.generateComponentsMask(comps, allocator);
+        var edge = ArchetypeEdge.init(allocator);
+        try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
 
-        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = edge };
+        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge };
     }
 
     pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
@@ -37,7 +37,7 @@ pub const Archetype = struct {
         mask.toggle(id);
 
         var edge = ArchetypeEdge.init(allocator);
-        try edge.ensureTotalCapacity(EDGE_CAPACITY);
+        try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
 
         return Archetype{
             .mask = mask,

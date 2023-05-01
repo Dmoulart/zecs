@@ -6,7 +6,6 @@ const Component = @import("./component.zig").Component;
 const defineComponent = @import("./component.zig").defineComponent;
 
 const Archetype = @import("./archetype.zig").Archetype;
-const generateComponentsMask = @import("./archetype.zig").generateComponentsMask;
 
 const World = @import("./world.zig").World;
 const Entity = @import("./world.zig").Entity;
