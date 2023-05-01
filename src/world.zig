@@ -93,9 +93,10 @@ pub const World = struct {
 
     pub fn deleteEntity(self: *Self, entity: Entity) void {
         assert(self.exists(entity));
-        self.deletedEntities.appendAssumeCapacity(entity);
-        _ = self.entitiesArchetypes.remove(entity);
-        self.count -= 1;
+        if (self.entitiesArchetypes.remove(entity)) {
+            self.deletedEntities.appendAssumeCapacity(entity);
+            self.count -= 1;
+        }
     }
 
     fn getRootArchetype(self: *Self) *Archetype {
@@ -104,7 +105,7 @@ pub const World = struct {
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
         assert(self.exists(entity));
-
+        
         var arch = self.entitiesArchetypes.get(entity) orelse unreachable;
         return arch.mask.isSet(component.id);
     }

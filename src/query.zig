@@ -41,6 +41,14 @@ pub const QueryIterator = struct {
             return null;
         }
     }
+
+    pub fn count(self: *Self) u64 {
+        var len: u64 = 0;
+        for (self.archetypes.items) |arch| {
+            len += arch.entities.count;
+        }
+        return len;
+    }
 };
 
 pub const Query = struct {

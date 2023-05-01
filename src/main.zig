@@ -18,44 +18,33 @@ pub fn main() !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
     var world = try World.init(arena.child_allocator);
     defer world.deinit();
+    var i: u64 = 0;
 
-    var ent = world.createEntity();
-    world.deleteEntity(ent);
+    while (i < 1_000_000) {
+        var ent = world.createEntity();
+        world.attach(ent, Position);
+        world.attach(ent, Velocity);
+        i += 1;
+    }
 
-    var ent2 = world.createEntity();
-    std.debug.print("ent 2 {}", .{ent2});
+    var query = world.entities().with(Position).with(Velocity).query();
+    defer query.deinit();
 
-    // var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    // defer arena.deinit();
-
-    // const Position = defineComponent(Vector);
-    // const Velocity = defineComponent(Vector);
-
-    // var world = try World.init(arena.child_allocator);
-    // defer world.deinit();
-    // var i: u64 = 0;
-
-    // var ts = std.time.milliTimestamp();
-    // while (i < 1_000_000) {
-    //     var ent = world.createEntity();
-    //     world.attach(ent, Position);
-    //     world.attach(ent, Velocity);
-    //     i += 1;
-    // }
-    // std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
-
-    // var query = world.entities().with(Position).with(Velocity).query();
-    // defer query.deinit();
-
-    // var iterator = query.iterator();
-    // var counter: i32 = 0;
-
-    // while (iterator.next()) |entity| {
-    //     std.debug.print("\nent {}", .{entity});
-    //     counter += 1;
-    // }
+    var iterator = query.iterator();
+    var counter: u128 = 0;
+    var ts = std.time.milliTimestamp();
+    std.debug.print("\n iterator.count {}", .{iterator.count()});
+    while (iterator.next()) |_| {
+        counter += 1;
+        // world.detach(ent, Position);
+    }
+    std.debug.print("\n counter {}", .{counter});
+    std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
 }
 test "Can create Entity" {
     World.resetEntityCursor();
