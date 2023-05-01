@@ -14,37 +14,44 @@ const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
 pub fn main() !void {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
 
-    const Position = defineComponent(Vector);
-    const Velocity = defineComponent(Vector);
+    // _ = world.createEntity();
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
-    defer world.deinit();
-    var i: u64 = 0;
+    // try expect(world.capacity == 8);
+    // try expect(world.entitiesArchetypes.capacity() > 8);
 
-    while (i < 1_000_000) {
-        var ent = world.createEntity();
-        world.attach(ent, Position);
-        world.attach(ent, Velocity);
-        i += 1;
-    }
+    // var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // defer arena.deinit();
 
-    var query = world.entities().with(Position).with(Velocity).query();
-    defer query.deinit();
+    // const Position = defineComponent(Vector);
+    // const Velocity = defineComponent(Vector);
 
-    var iterator = query.iterator();
-    var counter: u128 = 0;
-    var ts = std.time.milliTimestamp();
-    std.debug.print("\n iterator.count {}", .{iterator.count()});
-    while (iterator.next()) |_| {
-        counter += 1;
-        // world.detach(ent, Position);
-    }
-    std.debug.print("\n counter {}", .{counter});
-    std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
+    // var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    // defer world.deinit();
+    // var i: u64 = 0;
+
+    // while (i < 1_000_000) {
+    //     var ent = world.createEntity();
+    //     world.attach(ent, Position);
+    //     world.attach(ent, Velocity);
+    //     i += 1;
+    // }
+
+    // var query = world.entities().with(Position).with(Velocity).query();
+    // defer query.deinit();
+
+    // var iterator = query.iterator();
+    // var counter: u128 = 0;
+    // var ts = std.time.milliTimestamp();
+    // std.debug.print("\n iterator.count {}", .{iterator.count()});
+    // while (iterator.next()) |_| {
+    //     counter += 1;
+    //     // world.detach(ent, Position);
+    // }
+    // std.debug.print("\n counter {}", .{counter});
+    // std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
 }
+
 test "Can create Entity" {
     World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -70,6 +77,29 @@ test "Can remove Entity" {
     world.deleteEntity(ent);
 
     try expect(!world.exists(ent));
+}
+
+test "Can resize" {
+    World.resetEntityCursor();
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    var world = try World.init(.{
+        .allocator = arena.child_allocator,
+        .capacity = 4,
+    });
+    defer world.deinit();
+
+    _ = world.createEntity();
+    _ = world.createEntity();
+    _ = world.createEntity();
+    _ = world.createEntity();
+
+    try expect(world.capacity == 4);
+
+    _ = world.createEntity();
+
+    try expect(world.capacity == 4 * 2);
 }
 
 test "Can reuse Entity" {
