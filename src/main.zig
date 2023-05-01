@@ -18,24 +18,36 @@ pub fn main() !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    const Position = defineComponent(Vector);
-    const Velocity = defineComponent(Vector);
-
     var world = try World.init(arena.child_allocator);
     defer world.deinit();
-    var i: u64 = 0;
 
-    var ts = std.time.milliTimestamp();
-    while (i < 1_000_000) {
-        var ent = world.createEntity();
-        world.attach(ent, Position);
-        world.attach(ent, Velocity);
-        i += 1;
-    }
-    std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
+    var ent = world.createEntity();
+    world.deleteEntity(ent);
 
-    var query = world.entities().with(Position).with(Velocity).query();
-    defer query.deinit();
+    var ent2 = world.createEntity();
+    std.debug.print("ent 2 {}", .{ent2});
+
+    // var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // defer arena.deinit();
+
+    // const Position = defineComponent(Vector);
+    // const Velocity = defineComponent(Vector);
+
+    // var world = try World.init(arena.child_allocator);
+    // defer world.deinit();
+    // var i: u64 = 0;
+
+    // var ts = std.time.milliTimestamp();
+    // while (i < 1_000_000) {
+    //     var ent = world.createEntity();
+    //     world.attach(ent, Position);
+    //     world.attach(ent, Velocity);
+    //     i += 1;
+    // }
+    // std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
+
+    // var query = world.entities().with(Position).with(Velocity).query();
+    // defer query.deinit();
 
     // var iterator = query.iterator();
     // var counter: i32 = 0;
@@ -45,8 +57,51 @@ pub fn main() !void {
     //     counter += 1;
     // }
 }
+test "Can create Entity" {
+    World.resetEntityCursor();
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+
+    try expect(ent == 1);
+}
+
+test "Can remove Entity" {
+    World.resetEntityCursor();
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.deleteEntity(ent);
+
+    try expect(!world.exists(ent));
+}
+
+test "Can reuse Entity" {
+    World.resetEntityCursor();
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    var world = try World.init(arena.child_allocator);
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.deleteEntity(ent);
+
+    var ent2 = world.createEntity();
+
+    try expect(ent2 == 1);
+}
 
 test "Can attach component" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -69,6 +124,7 @@ test "Can attach component" {
 }
 
 test "Can detach component" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -94,6 +150,7 @@ test "Can detach component" {
 }
 
 test "Can generate archetype" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -113,6 +170,7 @@ test "Can generate archetype" {
 }
 
 test "Query can target argetype" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -132,6 +190,7 @@ test "Query can target argetype" {
 }
 
 test "Can update query reactively" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -167,6 +226,7 @@ test "Can update query reactively" {
 }
 
 test "Can query multiple components" {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -203,6 +263,7 @@ test "Can query multiple components" {
 }
 
 test "Can iterate over query " {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -225,7 +286,8 @@ test "Can iterate over query " {
     defer query.deinit();
 }
 
-test "Can iterate over query using iteraotr " {
+test "Can iterate over query using iterator " {
+    World.resetEntityCursor();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 

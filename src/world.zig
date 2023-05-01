@@ -25,10 +25,13 @@ pub const World = struct {
     allocator: std.mem.Allocator,
     archetypes: std.ArrayList(Archetype),
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
-
+    deletedEntities: std.ArrayList(Entity),
     count: u32 = 0,
-
     queryBuilder: QueryBuilder,
+
+    pub fn resetEntityCursor() void {
+        global_entity_counter = 0;
+    }
 
     pub fn init(alloc: std.mem.Allocator) !Self {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
@@ -39,7 +42,10 @@ pub const World = struct {
 
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var deletedEntities = std.ArrayList(Entity).init(alloc);
+        try deletedEntities.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+
+        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
 
         var rootArchetype = try buildArchetype(.{}, alloc);
         try world.archetypes.append(rootArchetype);
@@ -53,6 +59,7 @@ pub const World = struct {
         self.archetypes.deinit();
         self.entitiesArchetypes.deinit();
         self.queryBuilder.deinit();
+        self.deletedEntities.deinit();
     }
 
     pub fn createEntity(self: *Self) Entity {
@@ -61,9 +68,17 @@ pub const World = struct {
             self.capacity += WORLD_CAPACITY_GROW_FACTOR;
         }
 
-        global_entity_counter += 1;
+        var last_deleted_entity = self.deletedEntities.popOrNull();
 
-        var created_entity = global_entity_counter;
+        var created_entity: Entity = undefined;
+
+        if (last_deleted_entity) |ent| {
+            created_entity = ent;
+        } else {
+            global_entity_counter += 1;
+
+            created_entity = global_entity_counter;
+        }
 
         var root = self.getRootArchetype();
 
@@ -74,6 +89,13 @@ pub const World = struct {
         self.count += 1;
 
         return created_entity;
+    }
+
+    pub fn deleteEntity(self: *Self, entity: Entity) void {
+        assert(self.exists(entity));
+        self.deletedEntities.appendAssumeCapacity(entity);
+        _ = self.entitiesArchetypes.remove(entity);
+        self.count -= 1;
     }
 
     fn getRootArchetype(self: *Self) *Archetype {
