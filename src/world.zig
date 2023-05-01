@@ -34,9 +34,12 @@ pub const World = struct {
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
         try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
+        var archetypes = std.ArrayList(Archetype).init(alloc);
+        try archetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+
         var queryBuilder = try QueryBuilder.init(alloc);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = std.ArrayList(Archetype).init(alloc), .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
+        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder };
 
         var rootArchetype = try buildArchetype(.{}, alloc);
         try world.archetypes.append(rootArchetype);
@@ -115,18 +118,15 @@ pub const World = struct {
             self.swapArchetypes(entity, archetype, edge orelse unreachable);
         } else {
             var newArchetype = deriveArchetype(archetype, component.id, self.allocator);
-            newArchetype.mask.toggle(component.id);
 
-            newArchetype.entities.add(entity);
-            archetype.entities.remove(entity);
+            self.archetypes.appendAssumeCapacity(newArchetype);
 
-            _ = newArchetype.edge.put(component.id, archetype) catch null;
+            var appended_new_archetype = &self.archetypes.items[self.archetypes.items.len - 1];
 
-            // newArchetype.mask.toggle(component.id);
-            _ = self.archetypes.append(newArchetype) catch null;
+            appended_new_archetype.edge.putAssumeCapacity(component.id, archetype);
+            archetype.edge.putAssumeCapacity(component.id, appended_new_archetype);
 
-            self.entitiesArchetypes.putAssumeCapacity(entity, &self.archetypes.items[self.archetypes.items.len - 1]);
-            _ = archetype.edge.put(component.id, &self.archetypes.items[self.archetypes.items.len - 1]) catch null;
+            self.swapArchetypes(entity, archetype, appended_new_archetype);
         }
     }
 

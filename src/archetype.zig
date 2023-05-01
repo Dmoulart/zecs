@@ -10,6 +10,7 @@ pub const ArchetypeMask2 = std.bit_set.DynamicBitSet;
 
 const HASH_BASE: ArchetypeMask = 133562;
 const HASH_ENTROPY: ArchetypeMask = 423052;
+const EDGE_CAPACITY: ArchetypeMask = 10_000;
 
 pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
 
@@ -29,21 +30,24 @@ pub const Archetype = struct {
 
 pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
     var mask = try generateComponentsMask(comps, alloc);
+    var edge = ArchetypeEdge.init(alloc);
+    try edge.ensureTotalCapacity(EDGE_CAPACITY);
     // var edge = ArchetypeEdge.init(alloc);
     // _ = edge;
     // try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-    return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = ArchetypeEdge.init(alloc) };
+    return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = edge };
 }
 
 pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) Archetype {
-    _ = id;
-    var mask: ArchetypeMask2 = archetype.mask.clone(allocator) catch null orelse unreachable;
-
+    var mask: ArchetypeMask2 = archetype.mask.clone(allocator) catch unreachable;
+    mask.toggle(id);
+    var edge = ArchetypeEdge.init(allocator);
+    edge.ensureTotalCapacity(EDGE_CAPACITY) catch unreachable;
     var newArchetype = Archetype{
         .mask = mask,
         .entities = SparseSet(Entity).init(allocator),
-        .edge = ArchetypeEdge.init(allocator),
+        .edge = edge,
     };
 
     // try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
