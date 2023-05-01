@@ -90,7 +90,9 @@ pub const QueryBuilder = struct {
     const Self = @This();
 
     mask: std.bit_set.DynamicBitSet,
+
     allocator: std.mem.Allocator,
+
     world: *World,
 
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
@@ -107,10 +109,13 @@ pub const QueryBuilder = struct {
     }
 
     pub fn query(self: *Self) Query {
-        var created_query = Query{ .mask = self.mask.clone(self.world.allocator) catch null orelse unreachable, .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
+        var created_query = Query{ .mask = self.mask.clone(self.world.allocator) catch unreachable, .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
+
         self.mask.deinit();
-        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500) catch null orelse unreachable;
+        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500) catch unreachable;
+
         created_query.execute(self.world);
+
         return created_query;
     }
 };

@@ -20,7 +20,7 @@ pub fn main() !void {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
     var i: u64 = 0;
 
@@ -50,7 +50,7 @@ test "Can create Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -63,7 +63,7 @@ test "Can remove Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -77,7 +77,7 @@ test "Can reuse Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -96,7 +96,7 @@ test "Can attach component" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -119,7 +119,7 @@ test "Can detach component" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -145,7 +145,7 @@ test "Can generate archetype" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -164,7 +164,7 @@ test "Query can target argetype" {
 
     const Position = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -185,7 +185,7 @@ test "Can update query reactively" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -221,7 +221,7 @@ test "Can query multiple components" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -258,7 +258,7 @@ test "Can iterate over query " {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -282,7 +282,7 @@ test "Can iterate over query using iterator " {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(arena.child_allocator);
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -303,5 +303,6 @@ test "Can iterate over query using iterator " {
     while (iterator.next()) |_| {
         counter += 1;
     }
+
     try expect(counter == 2);
 }

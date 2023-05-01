@@ -7,16 +7,16 @@ const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 
 const DEFAULT_ARCHETYPE_STORAGE_CAPACITY = 1000;
 
-pub const ArchetypeStorage = struct {
+pub const ArchetypesStorage = struct {
     const Self = @This();
-    const ArchetypeStorageOptions = struct { capacity: ?u32 };
+    const ArchetypesStorageOptions = struct { capacity: ?u32 };
 
     allocator: std.mem.Allocator,
     all: std.ArrayList(Archetype),
 
     capacity: u32 = 0,
 
-    pub fn init(options: ArchetypeStorageOptions, allocator: std.mem.Allocator) !Self {
+    pub fn init(options: ArchetypesStorageOptions, allocator: std.mem.Allocator) !Self {
         var capacity = options.capacity orelse DEFAULT_ARCHETYPE_STORAGE_CAPACITY;
 
         var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);

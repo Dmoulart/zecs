@@ -15,7 +15,9 @@ pub const Archetype = struct {
     const Self = @This();
 
     mask: ArchetypeMask,
+
     entities: SparseSet(Entity),
+
     edge: ArchetypeEdge,
 
     pub fn deinit(self: *Self) void {

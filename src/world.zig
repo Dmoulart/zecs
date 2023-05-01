@@ -4,7 +4,7 @@ const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
-const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
+const ArchetypesStorage = @import("./archetypes-storage.zig").ArchetypesStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
@@ -20,30 +20,37 @@ pub const WORLD_CAPACITY_GROW_FACTOR = 10_000;
 
 pub const World = struct {
     const Self = @This();
-    capacity: u32 = DEFAULT_WORLD_CAPACITY,
+
     allocator: std.mem.Allocator,
-    archetypes: ArchetypeStorage,
+
+    archetypes: ArchetypesStorage,
+
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
+
     deletedEntities: std.ArrayList(Entity),
+
+    capacity: u32 = DEFAULT_WORLD_CAPACITY,
+
     count: u32 = 0,
+
     queryBuilder: QueryBuilder,
 
-    pub fn resetEntityCursor() void {
-        global_entity_counter = 0;
-    }
+    const WorldOptions = struct { allocator: std.mem.Allocator, capacity: ?u32 = DEFAULT_WORLD_CAPACITY };
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
-        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(allocator);
-        try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+    pub fn init(options: WorldOptions) !Self {
+        var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
 
-        var archetypes = try ArchetypeStorage.init(.{ .capacity = null }, allocator);
+        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(options.allocator);
+        try entitiesArchetypes.ensureTotalCapacity(capacity);
 
-        var queryBuilder = try QueryBuilder.init(allocator);
+        var archetypes = try ArchetypesStorage.init(.{ .capacity = capacity }, options.allocator);
 
-        var deletedEntities = std.ArrayList(Entity).init(allocator);
-        try deletedEntities.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+        var queryBuilder = try QueryBuilder.init(options.allocator);
 
-        var world = Self{ .allocator = allocator, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
+        var deletedEntities = std.ArrayList(Entity).init(options.allocator);
+        try deletedEntities.ensureTotalCapacity(capacity);
+
+        var world = Self{ .allocator = options.allocator, .capacity = capacity, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
 
         return world;
     }
@@ -55,21 +62,22 @@ pub const World = struct {
         self.deletedEntities.deinit();
     }
 
+    pub fn resetEntityCursor() void {
+        global_entity_counter = 0;
+    }
+
     pub fn createEntity(self: *Self) Entity {
         if (self.count == self.capacity) {
             self.entitiesArchetypes.ensureTotalCapacity(self.capacity + WORLD_CAPACITY_GROW_FACTOR) catch unreachable;
             self.capacity += WORLD_CAPACITY_GROW_FACTOR;
         }
 
-        var last_deleted_entity = self.deletedEntities.popOrNull();
-
         var created_entity: Entity = undefined;
 
-        if (last_deleted_entity) |ent| {
+        if (self.deletedEntities.popOrNull()) |ent| {
             created_entity = ent;
         } else {
             global_entity_counter += 1;
-
             created_entity = global_entity_counter;
         }
 
@@ -86,10 +94,14 @@ pub const World = struct {
 
     pub fn deleteEntity(self: *Self, entity: Entity) void {
         assert(self.exists(entity));
+
         var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+
         archetype.entities.remove(entity);
         _ = self.entitiesArchetypes.remove(entity);
+
         self.deletedEntities.appendAssumeCapacity(entity);
+
         self.count -= 1;
     }
 
@@ -97,6 +109,7 @@ pub const World = struct {
         assert(self.exists(entity));
 
         var arch = self.entitiesArchetypes.get(entity) orelse unreachable;
+
         return arch.mask.isSet(component.id);
     }
 
