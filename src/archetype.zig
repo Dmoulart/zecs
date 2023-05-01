@@ -5,19 +5,16 @@ const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Entity = @import("./world.zig").Entity;
 const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
 
-pub const ArchetypeMask = u128;
-pub const ArchetypeMask2 = std.bit_set.DynamicBitSet;
+pub const ArchetypeMask = std.bit_set.DynamicBitSet;
 
-const HASH_BASE: ArchetypeMask = 133562;
-const HASH_ENTROPY: ArchetypeMask = 423052;
-const EDGE_CAPACITY: ArchetypeMask = 10_000;
+const EDGE_CAPACITY: u32 = 10_000;
 
 pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
 
 pub const Archetype = struct {
     const Self = @This();
 
-    mask: ArchetypeMask2,
+    mask: ArchetypeMask,
     entities: SparseSet(Entity),
     edge: ArchetypeEdge,
 
@@ -26,51 +23,45 @@ pub const Archetype = struct {
         self.edge.deinit();
         self.entities.deinit();
     }
-};
 
-pub fn buildArchetype(comps: anytype, alloc: std.mem.Allocator) !Archetype {
-    var mask = try generateComponentsMask(comps, alloc);
-    var edge = ArchetypeEdge.init(alloc);
-    try edge.ensureTotalCapacity(EDGE_CAPACITY);
-    // var edge = ArchetypeEdge.init(alloc);
-    // _ = edge;
-    // try edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+    pub fn build(comps: anytype, alloc: std.mem.Allocator) !Archetype {
+        var mask = try Self.generateComponentsMask(comps, alloc);
+        var edge = ArchetypeEdge.init(alloc);
+        try edge.ensureTotalCapacity(EDGE_CAPACITY);
 
-    return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = edge };
-}
-
-pub fn deriveArchetype(archetype: *Archetype, id: ComponentId, allocator: std.mem.Allocator) Archetype {
-    var mask: ArchetypeMask2 = archetype.mask.clone(allocator) catch unreachable;
-    mask.toggle(id);
-    var edge = ArchetypeEdge.init(allocator);
-    edge.ensureTotalCapacity(EDGE_CAPACITY) catch unreachable;
-    var newArchetype = Archetype{
-        .mask = mask,
-        .entities = SparseSet(Entity).init(allocator),
-        .edge = edge,
-    };
-
-    // try newArchetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
-    // try archetype.edge.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
-
-    // _ = archetype.edge.put(id, &newArchetype) catch null;
-    // _ = newArchetype.edge.put(id, archetype) catch null;
-
-    return newArchetype;
-}
-
-pub fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
-    const fields = std.meta.fields(@TypeOf(comps));
-
-    var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 500);
-
-    inline for (fields) |field| {
-        var comp = @field(comps, field.name);
-        mask.set(@as(usize, comp.id));
+        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(alloc), .edge = edge };
     }
 
-    return mask;
-}
+    pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
+        var mask: ArchetypeMask = try self.mask.clone(allocator);
+        mask.toggle(id);
+
+        var edge = ArchetypeEdge.init(allocator);
+        try edge.ensureTotalCapacity(EDGE_CAPACITY);
+
+        return Archetype{
+            .mask = mask,
+            .entities = SparseSet(Entity).init(allocator),
+            .edge = edge,
+        };
+    }
+
+    fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
+        const fields = std.meta.fields(@TypeOf(comps));
+
+        var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 500);
+
+        inline for (fields) |field| {
+            var comp = @field(comps, field.name);
+            mask.set(@as(usize, comp.id));
+        }
+
+        return mask;
+    }
+};
+
+// const HASH_BASE: ArchetypeMask = 133562;
+// const HASH_ENTROPY: ArchetypeMask = 423052;
 
 // pub fn hash(ids: []u64) ArchetypeMask {
 //     var hash_value: ArchetypeMask = HASH_BASE;

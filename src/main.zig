@@ -5,7 +5,7 @@ const mem = @import("std").mem;
 const Component = @import("./component.zig").Component;
 const defineComponent = @import("./component.zig").defineComponent;
 
-const buildArchetype = @import("./archetype.zig").buildArchetype;
+const Archetype = @import("./archetype.zig").Archetype;
 const generateComponentsMask = @import("./archetype.zig").generateComponentsMask;
 
 const World = @import("./world.zig").World;

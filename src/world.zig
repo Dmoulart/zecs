@@ -7,8 +7,6 @@ const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
-const buildArchetype = @import("./archetype.zig").buildArchetype;
-const deriveArchetype = @import("./archetype.zig").deriveArchetype;
 
 var global_entity_counter: Entity = 0;
 
@@ -47,7 +45,7 @@ pub const World = struct {
 
         var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
 
-        var rootArchetype = try buildArchetype(.{}, alloc);
+        var rootArchetype = try Archetype.build(.{}, alloc);
         try world.archetypes.append(rootArchetype);
         return world;
     }
@@ -134,14 +132,14 @@ pub const World = struct {
     }
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
-        var archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
+        var archetype: *Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        var edge = archetype.edge.get(component.id);
+        var edge: ?*Archetype = archetype.edge.get(component.id);
 
         if (edge != null) {
             self.swapArchetypes(entity, archetype, edge orelse unreachable);
         } else {
-            var newArchetype = deriveArchetype(archetype, component.id, self.allocator);
+            var newArchetype = archetype.derive(component.id, self.allocator) catch return;
 
             self.archetypes.appendAssumeCapacity(newArchetype);
 
