@@ -125,21 +125,12 @@ pub const World = struct {
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
         var archetype: *Archetype = self.entitiesArchetypes.get(entity) orelse unreachable;
 
-        var edge: ?*Archetype = archetype.edge.get(component.id);
-
-        if (edge != null) {
-            self.swapArchetypes(entity, archetype, edge orelse unreachable);
+        if (archetype.edge.get(component.id)) |edge| {
+            self.swapArchetypes(entity, archetype, edge);
         } else {
-            var newArchetype = archetype.derive(component.id, self.allocator) catch return;
+            var new_archetype = self.archetypes.derive(archetype, component.id);
 
-            self.archetypes.all.appendAssumeCapacity(newArchetype);
-
-            var appended_new_archetype = &self.archetypes.all.items[self.archetypes.all.items.len - 1];
-
-            appended_new_archetype.edge.putAssumeCapacity(component.id, archetype);
-            archetype.edge.putAssumeCapacity(component.id, appended_new_archetype);
-
-            self.swapArchetypes(entity, archetype, appended_new_archetype);
+            self.swapArchetypes(entity, archetype, new_archetype);
         }
     }
 
