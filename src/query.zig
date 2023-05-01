@@ -78,13 +78,15 @@ pub const Query = struct {
     }
 
     fn execute(self: *Self, world: *World) void {
-        for (world.archetypes.all.items) |*arch| {
-            if (intersects(&self.mask, &arch.mask)) {
-                _ = self.archetypes.append(arch) catch null;
+        for (world.archetypes.all.items) |*archetype| {
+            if (intersects(&self.mask, &archetype.mask)) {
+                _ = self.archetypes.append(archetype) catch null;
             }
         }
     }
 };
+
+pub const MAX_COMPONENTS_PER_QUERY = 100;
 
 pub const QueryBuilder = struct {
     const Self = @This();
@@ -95,8 +97,12 @@ pub const QueryBuilder = struct {
 
     world: *World,
 
-    pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        return QueryBuilder{ .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, 150), .allocator = allocator, .world = undefined };
+    pub fn init(allocator: std.mem.Allocator, world: *World) !QueryBuilder {
+        return QueryBuilder{
+            .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, MAX_COMPONENTS_PER_QUERY),
+            .allocator = allocator,
+            .world = world,
+        };
     }
 
     pub fn deinit(self: *Self) void {
@@ -109,10 +115,13 @@ pub const QueryBuilder = struct {
     }
 
     pub fn query(self: *Self) Query {
-        var created_query = Query{ .mask = self.mask.clone(self.world.allocator) catch unreachable, .archetypes = std.ArrayList(*Archetype).init(self.world.allocator) };
+        var created_query = Query{
+            .mask = self.mask.clone(self.allocator) catch unreachable,
+            .archetypes = std.ArrayList(*Archetype).init(self.allocator),
+        };
 
         self.mask.deinit();
-        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, 500) catch unreachable;
+        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, MAX_COMPONENTS_PER_QUERY) catch unreachable;
 
         created_query.execute(self.world);
 

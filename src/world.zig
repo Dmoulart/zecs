@@ -46,14 +46,16 @@ pub const World = struct {
             .capacity = capacity,
         });
 
-        var queryBuilder = try QueryBuilder.init(options.allocator);
-
         var world = Self{
             .allocator = options.allocator,
             .archetypes = archetypes,
             .entities = entities,
-            .queryBuilder = queryBuilder,
+            .queryBuilder = undefined,
         };
+
+        var queryBuilder = try QueryBuilder.init(options.allocator, &world);
+
+        world.queryBuilder = queryBuilder;
 
         return world;
     }
@@ -76,7 +78,6 @@ pub const World = struct {
         assert(self.contains(entity));
 
         var archetype = self.entities.getArchetype(entity) orelse unreachable;
-
         return archetype.has(component.id);
     }
 
