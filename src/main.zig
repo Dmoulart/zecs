@@ -4,12 +4,12 @@ const mem = @import("std").mem;
 
 const Component = @import("./component.zig").Component;
 const defineComponent = @import("./component.zig").defineComponent;
-
 const Archetype = @import("./archetype.zig").Archetype;
-
 const World = @import("./world.zig").World;
 const Entity = @import("./world.zig").Entity;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
+const Query2 = @import("./query-2.zig").Query2;
+const QueryBuilder2 = @import("./query-2.zig").QueryBuilder;
 
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
@@ -323,4 +323,73 @@ test "Can iterate over query using iterator " {
     }
 
     try expect(counter == 2);
+}
+
+test "Can use all query operator" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    var ent2 = world.createEntity();
+    world.attach(ent2, Position);
+    world.attach(ent2, Velocity);
+
+    var ent3 = world.createEntity();
+    world.attach(ent3, Position);
+
+    var ent4 = world.createEntity();
+    world.attach(ent4, Velocity);
+
+    var query = try QueryBuilder2.init(arena.child_allocator);
+    defer query.deinit();
+    var result = query.all(.{ Position, Velocity }).from(&world);
+    defer result.deinit();
+
+    try expect(result.archetypes.items.len == 1);
+    try expect(result.archetypes.items[0].entities.count == 2);
+}
+
+test "Can use any query operator" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    var ent2 = world.createEntity();
+    world.attach(ent2, Position);
+    world.attach(ent2, Velocity);
+
+    var ent3 = world.createEntity();
+    world.attach(ent3, Position);
+
+    var ent4 = world.createEntity();
+    world.attach(ent4, Velocity);
+
+    var ent5 = world.createEntity();
+    _ = ent5;
+
+    var query = try QueryBuilder2.init(arena.child_allocator);
+    defer query.deinit();
+    var result = query.any(.{ Position, Velocity }).from(&world);
+    defer result.deinit();
+
+    try expect(result.archetypes.items.len == 3);
+    try expect(result.archetypes.items[0].entities.count == 4);
 }
