@@ -193,7 +193,7 @@ test "Query can target argetype" {
 
     world.attach(ent, Position);
 
-    var query = world.query().with(Position).query();
+    var query = world.query().with(Position).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0] == &world.archetypes.all.items[1]);
@@ -215,13 +215,13 @@ test "Can update query reactively" {
     world.attach(ent, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).query();
+    var query = world.query().with(Position).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = world.query().with(Velocity).query();
+    var query2 = world.query().with(Velocity).from(&world);
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
@@ -252,13 +252,13 @@ test "Can query multiple components" {
 
     world.attach(ent2, Position);
 
-    var query = world.query().with(Position).with(Velocity).query();
+    var query = world.query().with(Position).with(Velocity).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = world.query().with(Position).query();
+    var query2 = world.query().with(Position).from(&world);
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
@@ -289,7 +289,7 @@ test "Can iterate over query " {
     world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).with(Velocity).query();
+    var query = world.query().with(Position).with(Velocity).from(&world);
     defer query.deinit();
 }
 
@@ -312,7 +312,7 @@ test "Can iterate over query using iterator " {
     world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).with(Velocity).query();
+    var query = world.query().with(Position).with(Velocity).from(&world);
     defer query.deinit();
 
     var iterator = query.iterator();

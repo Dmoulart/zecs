@@ -95,13 +95,10 @@ pub const QueryBuilder = struct {
 
     allocator: std.mem.Allocator,
 
-    world: *World,
-
-    pub fn init(allocator: std.mem.Allocator, world: *World) !QueryBuilder {
+    pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
         return QueryBuilder{
             .mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, MAX_COMPONENTS_PER_QUERY),
             .allocator = allocator,
-            .world = world,
         };
     }
 
@@ -114,16 +111,16 @@ pub const QueryBuilder = struct {
         return self;
     }
 
-    pub fn query(self: *Self) Query {
+    pub fn from(self: *Self, world: *World) Query {
         var created_query = Query{
             .mask = self.mask.clone(self.allocator) catch unreachable,
             .archetypes = std.ArrayList(*Archetype).init(self.allocator),
         };
 
         self.mask.deinit();
-        self.mask = std.bit_set.DynamicBitSet.initEmpty(self.world.allocator, MAX_COMPONENTS_PER_QUERY) catch unreachable;
+        self.mask = std.bit_set.DynamicBitSet.initEmpty(world.allocator, MAX_COMPONENTS_PER_QUERY) catch unreachable;
 
-        created_query.execute(self.world);
+        created_query.execute(world);
 
         return created_query;
     }

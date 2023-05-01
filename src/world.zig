@@ -53,7 +53,7 @@ pub const World = struct {
             .queryBuilder = undefined,
         };
 
-        var queryBuilder = try QueryBuilder.init(options.allocator, &world);
+        var queryBuilder = try QueryBuilder.init(options.allocator);
 
         world.queryBuilder = queryBuilder;
 
@@ -99,7 +99,7 @@ pub const World = struct {
 
     pub fn query(self: *Self) *QueryBuilder {
         // oh man thats craap
-        self.queryBuilder.world = self;
+        // self.queryBuilder.world = self;
         return &self.queryBuilder;
     }
 
