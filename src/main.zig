@@ -28,9 +28,8 @@ pub fn main() !void {
     var ts = std.time.milliTimestamp();
     while (i < 1_000_000) {
         var ent = world.createEntity();
-        _ = ent;
-        // world.attach(ent, Position);
-        // world.attach(ent, Velocity);
+        world.attach(ent, Position);
+        world.attach(ent, Velocity);
         i += 1;
     }
     std.debug.print("\nduration {}", .{std.time.milliTimestamp() - ts});
