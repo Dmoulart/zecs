@@ -4,6 +4,7 @@ const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
+const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
@@ -21,7 +22,7 @@ pub const World = struct {
     const Self = @This();
     capacity: u32 = DEFAULT_WORLD_CAPACITY,
     allocator: std.mem.Allocator,
-    archetypes: std.ArrayList(Archetype),
+    archetypes: ArchetypeStorage,
     entitiesArchetypes: std.AutoHashMap(Entity, *Archetype),
     deletedEntities: std.ArrayList(Entity),
     count: u32 = 0,
@@ -31,29 +32,23 @@ pub const World = struct {
         global_entity_counter = 0;
     }
 
-    pub fn init(alloc: std.mem.Allocator) !Self {
-        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(alloc);
+    pub fn init(allocator: std.mem.Allocator) !Self {
+        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(allocator);
         try entitiesArchetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-        var archetypes = std.ArrayList(Archetype).init(alloc);
-        try archetypes.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
+        var archetypes = try ArchetypeStorage.init(.{ .capacity = null }, allocator);
 
-        var queryBuilder = try QueryBuilder.init(alloc);
+        var queryBuilder = try QueryBuilder.init(allocator);
 
-        var deletedEntities = std.ArrayList(Entity).init(alloc);
+        var deletedEntities = std.ArrayList(Entity).init(allocator);
         try deletedEntities.ensureTotalCapacity(DEFAULT_WORLD_CAPACITY);
 
-        var world = Self{ .allocator = alloc, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
+        var world = Self{ .allocator = allocator, .capacity = 0, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
 
-        var rootArchetype = try Archetype.build(.{}, alloc);
-        try world.archetypes.append(rootArchetype);
         return world;
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.archetypes.items) |*arch| {
-            arch.deinit();
-        }
         self.archetypes.deinit();
         self.entitiesArchetypes.deinit();
         self.queryBuilder.deinit();
@@ -78,7 +73,7 @@ pub const World = struct {
             created_entity = global_entity_counter;
         }
 
-        var root = self.getRootArchetype();
+        var root = self.archetypes.getRoot();
 
         root.entities.add(created_entity);
 
@@ -96,10 +91,6 @@ pub const World = struct {
         _ = self.entitiesArchetypes.remove(entity);
         self.deletedEntities.appendAssumeCapacity(entity);
         self.count -= 1;
-    }
-
-    fn getRootArchetype(self: *Self) *Archetype {
-        return &self.archetypes.items[0];
     }
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
@@ -141,9 +132,9 @@ pub const World = struct {
         } else {
             var newArchetype = archetype.derive(component.id, self.allocator) catch return;
 
-            self.archetypes.appendAssumeCapacity(newArchetype);
+            self.archetypes.all.appendAssumeCapacity(newArchetype);
 
-            var appended_new_archetype = &self.archetypes.items[self.archetypes.items.len - 1];
+            var appended_new_archetype = &self.archetypes.all.items[self.archetypes.all.items.len - 1];
 
             appended_new_archetype.edge.putAssumeCapacity(component.id, archetype);
             archetype.edge.putAssumeCapacity(component.id, appended_new_archetype);

@@ -58,13 +58,13 @@ pub const Query = struct {
 
     archetypes: std.ArrayList(*Archetype),
 
-    pub fn each(self: *Self, function: fn (entity: Entity) void) void {
-        for (self.archetypes) |arch| {
-            for (arch.values) |entity| {
-                function(entity);
-            }
-        }
-    }
+    // pub fn each(self: *Self, function: fn (entity: Entity) void) void {
+    //     for (self.archetypes) |arch| {
+    //         for (arch.values) |entity| {
+    //             function(entity);
+    //         }
+    //     }
+    // }
 
     pub fn iterator(self: *Self) QueryIterator {
         return QueryIterator{
@@ -78,7 +78,7 @@ pub const Query = struct {
     }
 
     fn execute(self: *Self, world: *World) void {
-        for (world.archetypes.items) |*arch| {
+        for (world.archetypes.all.items) |*arch| {
             if (intersects(&self.mask, &arch.mask)) {
                 _ = self.archetypes.append(arch) catch null;
             }

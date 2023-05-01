@@ -151,7 +151,7 @@ test "Can generate archetype" {
     var ent = world.createEntity();
 
     world.attach(ent, Position);
-    var mask: std.bit_set.DynamicBitSet = world.archetypes.items[1].mask;
+    var mask: std.bit_set.DynamicBitSet = world.archetypes.all.items[1].mask;
 
     try expect(mask.isSet(Position.id));
     try expect(!mask.isSet(Velocity.id));
@@ -174,7 +174,7 @@ test "Query can target argetype" {
     var query = world.entities().with(Position).query();
     defer query.deinit();
 
-    try expect(query.archetypes.items[0] == &world.archetypes.items[1]);
+    try expect(query.archetypes.items[0] == &world.archetypes.all.items[1]);
 }
 
 test "Can update query reactively" {
