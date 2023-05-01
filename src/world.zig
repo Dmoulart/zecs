@@ -76,7 +76,7 @@ pub const World = struct {
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
         assert(self.contains(entity));
 
-        var archetype = self.entities.all.get(entity) orelse unreachable;
+        var archetype = self.entities.getArchetype(entity) orelse unreachable;
 
         return archetype.mask.isSet(component.id);
     }
@@ -104,22 +104,20 @@ pub const World = struct {
     }
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
-        var archetype: *Archetype = self.entities.all.get(entity) orelse unreachable;
+        var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
 
         if (archetype.edge.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
         } else {
             var new_archetype = self.archetypes.derive(archetype, component.id);
-
             self.swapArchetypes(entity, archetype, new_archetype);
         }
     }
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        self.entities.all.putAssumeCapacity(entity, new);
+        self.entities.setArchetype(entity, new);
 
         old.entities.remove(entity);
-
         new.entities.add(entity);
     }
 };

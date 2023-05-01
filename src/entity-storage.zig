@@ -85,6 +85,14 @@ pub const EntityStorage = struct {
         self.count -= 1;
     }
 
+    pub fn getArchetype(self: *Self, entity: Entity) ?*Archetype {
+        return self.all.get(entity);
+    }
+
+    pub fn setArchetype(self: *Self, entity: Entity, archetype: *Archetype) void {
+        self.all.putAssumeCapacity(entity, archetype);
+    }
+
     pub fn contains(self: *Self, entity: Entity) bool {
         return self.all.contains(entity);
     }
