@@ -20,32 +20,30 @@ pub const Archetype = struct {
 
     edge: ArchetypeEdge,
 
+    capacity: u32,
+
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
         self.edge.deinit();
         self.entities.deinit();
     }
 
-    pub fn build(comps: anytype, allocator: std.mem.Allocator) !Archetype {
+    pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) !Archetype {
         var mask = try Self.generateComponentsMask(comps, allocator);
         var edge = ArchetypeEdge.init(allocator);
-        try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
+        try edge.ensureTotalCapacity(capacity);
 
-        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge };
+        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge, .capacity = capacity };
     }
 
-    pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator) !Archetype {
+    pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) !Archetype {
         var mask: ArchetypeMask = try self.mask.clone(allocator);
         mask.toggle(id);
 
         var edge = ArchetypeEdge.init(allocator);
         try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
 
-        return Archetype{
-            .mask = mask,
-            .entities = SparseSet(Entity).init(allocator),
-            .edge = edge,
-        };
+        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge, .capacity = capacity };
     }
 
     fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {

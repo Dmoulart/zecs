@@ -5,25 +5,31 @@ const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 
-const DEFAULT_ARCHETYPE_STORAGE_CAPACITY = 1000;
+pub const DEFAULT_ARCHETYPE_CAPACITY = 10_000;
+pub const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = 1000;
 
 pub const ArchetypesStorage = struct {
     const Self = @This();
-    const ArchetypesStorageOptions = struct { capacity: ?u32 };
+
+    const ArchetypesStorageOptions = struct { capacity: ?u32, archetype_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY };
 
     allocator: std.mem.Allocator,
+
     all: std.ArrayList(Archetype),
 
-    capacity: u32 = 0,
+    capacity: u32,
+
+    archetype_capacity: u32,
 
     pub fn init(options: ArchetypesStorageOptions, allocator: std.mem.Allocator) !Self {
-        var capacity = options.capacity orelse DEFAULT_ARCHETYPE_STORAGE_CAPACITY;
+        var capacity = options.capacity orelse DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
+        var archetype_capacity = options.archetype_capacity orelse DEFAULT_ARCHETYPE_CAPACITY;
 
         var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
 
-        var storage = Self{ .allocator = allocator, .all = all, .capacity = capacity };
+        var storage = Self{ .allocator = allocator, .all = all, .capacity = capacity, .archetype_capacity = archetype_capacity };
 
-        var root = try Archetype.build(.{}, allocator);
+        var root = try Archetype.build(.{}, allocator, archetype_capacity);
 
         storage.all.appendAssumeCapacity(root);
 
@@ -42,7 +48,7 @@ pub const ArchetypesStorage = struct {
     }
 
     pub fn derive(self: *Self, archetype: *Archetype, component_id: ComponentId) *Archetype {
-        var derived = archetype.derive(component_id, self.allocator) catch unreachable;
+        var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity) catch unreachable;
         var new_archetype = self.register(&derived);
 
         new_archetype.edge.putAssumeCapacity(component_id, archetype);

@@ -5,18 +5,18 @@ const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 const ArchetypesStorage = @import("./archetypes-storage.zig").ArchetypesStorage;
+const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetypes-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
 
-var global_entity_counter: Entity = 0;
-
 pub const Entity = u64;
+
+var global_entity_counter: Entity = 0;
 
 const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
 
-pub const DEFAULT_WORLD_CAPACITY = 10_000;
-pub const WORLD_CAPACITY_GROW_FACTOR = 10_000;
+const DEFAULT_WORLD_CAPACITY = 10_000;
 
 pub const World = struct {
     const Self = @This();
@@ -35,22 +35,38 @@ pub const World = struct {
 
     queryBuilder: QueryBuilder,
 
-    const WorldOptions = struct { allocator: std.mem.Allocator, capacity: ?u32 = DEFAULT_WORLD_CAPACITY };
+    const WorldOptions = struct {
+        allocator: std.mem.Allocator,
+        capacity: ?u32 = DEFAULT_WORLD_CAPACITY,
+        archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
+    };
 
     pub fn init(options: WorldOptions) !Self {
         var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
+        var archetypes_storage_capacity = options.archetypes_capacity;
 
         var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(options.allocator);
         try entitiesArchetypes.ensureTotalCapacity(capacity);
 
-        var archetypes = try ArchetypesStorage.init(.{ .capacity = capacity }, options.allocator);
+        var archetypes = try ArchetypesStorage.init(.{
+            .capacity = archetypes_storage_capacity,
+            .archetype_capacity = capacity,
+        }, options.allocator);
 
         var queryBuilder = try QueryBuilder.init(options.allocator);
 
         var deletedEntities = std.ArrayList(Entity).init(options.allocator);
         try deletedEntities.ensureTotalCapacity(capacity);
 
-        var world = Self{ .allocator = options.allocator, .capacity = capacity, .count = 0, .archetypes = archetypes, .entitiesArchetypes = entitiesArchetypes, .queryBuilder = queryBuilder, .deletedEntities = deletedEntities };
+        var world = Self{
+            .allocator = options.allocator,
+            .capacity = capacity,
+            .count = 0,
+            .archetypes = archetypes,
+            .entitiesArchetypes = entitiesArchetypes,
+            .queryBuilder = queryBuilder,
+            .deletedEntities = deletedEntities,
+        };
 
         return world;
     }
@@ -68,8 +84,8 @@ pub const World = struct {
 
     pub fn createEntity(self: *Self) Entity {
         if (self.count == self.capacity) {
-            self.entitiesArchetypes.ensureTotalCapacity(self.capacity + WORLD_CAPACITY_GROW_FACTOR) catch unreachable;
-            self.capacity += WORLD_CAPACITY_GROW_FACTOR;
+            self.entitiesArchetypes.ensureTotalCapacity(self.capacity + self.getGrowFactor()) catch unreachable;
+            self.capacity += self.getGrowFactor();
         }
 
         var created_entity: Entity = undefined;
@@ -133,6 +149,10 @@ pub const World = struct {
         // oh man thats craap
         self.queryBuilder.world = self;
         return &self.queryBuilder;
+    }
+
+    fn getGrowFactor(self: *Self) u32 {
+        return self.capacity;
     }
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
