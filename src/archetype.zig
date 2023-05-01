@@ -46,6 +46,10 @@ pub const Archetype = struct {
         return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge, .capacity = capacity };
     }
 
+    pub fn has(self: *Self, id: ComponentId) bool {
+        return self.mask.isSet(id);
+    }
+
     fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
         const fields = std.meta.fields(@TypeOf(comps));
 

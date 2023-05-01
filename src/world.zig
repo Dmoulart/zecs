@@ -1,19 +1,18 @@
 const std = @import("std");
 const assert = @import("std").debug.assert;
+
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
-const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 
-const ArchetypeMap = std.AutoHashMap(ArchetypeMask, Archetype);
-
+const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
 pub const World = struct {
@@ -78,7 +77,7 @@ pub const World = struct {
 
         var archetype = self.entities.getArchetype(entity) orelse unreachable;
 
-        return archetype.mask.isSet(component.id);
+        return archetype.has(component.id);
     }
 
     pub fn contains(self: *Self, entity: Entity) bool {

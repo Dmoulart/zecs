@@ -43,10 +43,6 @@ pub const ArchetypeStorage = struct {
         self.all.deinit();
     }
 
-    pub fn getRoot(self: *Self) *Archetype {
-        return &self.all.items[0];
-    }
-
     pub fn derive(self: *Self, archetype: *Archetype, component_id: ComponentId) *Archetype {
         var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity) catch unreachable;
         var new_archetype = self.register(&derived);
@@ -63,5 +59,9 @@ pub const ArchetypeStorage = struct {
     ) *Archetype {
         self.all.appendAssumeCapacity(archetype.*);
         return &self.all.items[self.all.items.len - 1];
+    }
+
+    pub fn getRoot(self: *Self) *Archetype {
+        return &self.all.items[0];
     }
 };
