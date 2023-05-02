@@ -7,7 +7,7 @@ const Entity = @import("./entity-storage.zig").Entity;
 fn numMasks(bit_length: usize) usize {
     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
 }
-fn contains(bitset: *std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
     const num_masks = numMasks(bitset.unmanaged.bit_length);
 
     for (bitset.unmanaged.masks[0..num_masks]) |*mask, i| {
@@ -18,12 +18,11 @@ fn contains(bitset: *std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSe
 
     return true;
 }
-fn intersects(bitset: *std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+fn intersects(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
     const num_masks = numMasks(bitset.unmanaged.bit_length);
 
     for (bitset.unmanaged.masks[0..num_masks]) |*mask, i| {
         if (mask.* & other.unmanaged.masks[i] > 0) {
-            std.debug.print("\n{} & {}", .{ mask.*, other.unmanaged.masks[i] });
             return true;
         }
     }
@@ -71,6 +70,8 @@ pub const Query = struct {
 
     archetypes: std.ArrayList(*Archetype),
 
+    // operations: [2]?QueryOperation = .{ null, null },
+
     // pub fn each(self: *Self, function: fn (entity: Entity) void) void {
     //     for (self.archetypes) |arch| {
     //         for (arch.values) |entity| {
@@ -95,6 +96,19 @@ pub const Query = struct {
         }
     }
 
+    // fn execute2(self: *Self, world: *World) void {
+    //     archloop: for (world.archetypes.all.items) |*archetype| {
+    //         for (self.operations) |operation| {
+    //             if (operation) |*op| {
+    //                 if (op.match(archetype)) {
+    //                     _ = self.archetypes.append(archetype) catch null;
+    //                     continue :archloop;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
     fn execute(self: *Self, world: *World) void {
         for (world.archetypes.all.items) |*archetype| {
             if (self.any_mask) |*mask| {
@@ -106,16 +120,36 @@ pub const Query = struct {
             if (self.all_mask) |*mask| {
                 if (contains(mask, &archetype.mask)) {
                     _ = self.archetypes.append(archetype) catch null;
+                    continue;
                 }
             }
-            // if (self.any_mask != null and intersects(&self.any_mask, &archetype.mask) or self.all_mask != null and contains(&self.all_mask, &archetype.mask)) {
-            //     _ = self.archetypes.append(archetype) catch null;
-            // }
         }
     }
 };
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
+
+// pub const QueryOperationTag = enum { any, all };
+
+// pub const QueryOperation = union(QueryOperationTag) {
+//     const Self = @This();
+//     any: std.bit_set.DynamicBitSet,
+//     all: std.bit_set.DynamicBitSet,
+
+//     pub fn match(self: Self, archetype: *Archetype) bool {
+//         return switch (self) {
+//             .any => |*mask| intersects(mask, &archetype.mask),
+//             .all => |*mask| contains(mask, &archetype.mask),
+//         };
+//     }
+
+//     pub fn clone(self: Self, allocator: std.mem.Allocator) Self {
+//         return switch (self) {
+//             .any => |*mask| QueryOperation{ .any = mask.clone(allocator) catch unreachable },
+//             .all => |*mask| QueryOperation{ .all = mask.clone(allocator) catch unreachable },
+//         };
+//     }
+// };
 
 pub const QueryBuilder = struct {
     const Self = @This();
@@ -123,13 +157,27 @@ pub const QueryBuilder = struct {
     all_mask: ?std.bit_set.DynamicBitSet = null,
     any_mask: ?std.bit_set.DynamicBitSet = null,
 
-    allocator: std.mem.Allocator,
+    // operations: [2]?QueryOperation = .{ null, null },
 
+    // prepared_query: Query,
+
+    allocator: std.mem.Allocator,
+    // query(.{.all= {Position, Velocity}, .any={}})
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
+        // var operations = try allocator.alloc(QueryOperation, @typeInfo(QueryOperationTag).Enum.fields.len);
+        // errdefer allocator.free(operations);
+
         return QueryBuilder{
             .all_mask = null,
             .any_mask = null,
             .allocator = allocator,
+            // .operations = undefined,
+            // .prepared_query = Query{
+            //     .all_mask = null,
+            //     .any_mask = null,
+            //     // .operations = [2]?QueryOperation{ null, null },
+            //     .archetypes = std.ArrayList(*Archetype).init(allocator),
+            // },
         };
     }
 
@@ -140,7 +188,30 @@ pub const QueryBuilder = struct {
         if (self.any_mask) |*mask| {
             mask.deinit();
         }
+
+        // self.allocator.free(self.operations);
     }
+
+    // pub fn any2(self: *Self, data: anytype) *Self {
+    //     const components = std.meta.fields(@TypeOf(data));
+
+    //     var op_index = @enumToInt(QueryOperationTag.any);
+
+    //     if (self.prepared_query.operations[op_index] == null) |_| {
+    //         self.prepared_query.operations[op_index] = QueryOperation{
+    //             .any = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch unreachable,
+    //         };
+    //     }
+
+    //     var op = if (self.prepared_query.operations[op_index]) |*op| op else unreachable;
+
+    //     inline for (components) |field| {
+    //         var component = @field(data, field.name);
+    //         op.any.set(component.id);
+    //     }
+
+    //     return self;
+    // }
 
     pub fn any(self: *Self, data: anytype) *Self {
         const components = std.meta.fields(@TypeOf(data));
@@ -171,6 +242,40 @@ pub const QueryBuilder = struct {
 
         return self;
     }
+
+    // pub fn from2(self: *Self, world: *World) Query {
+    //     var query_any_op = if (self.operations[0]) |*op| QueryOperation{
+    //         .any = op.any.clone(self.allocator) catch std.bit_set.DynamicBitSet,
+    //     } else null;
+
+    //     var query_all_op = if (self.operations[1]) |*op| QueryOperation{
+    //         .all = op.all.clone(self.allocator) catch null,
+    //     } else null;
+
+    //     var created_query = Query{
+    //         .all_mask = if (self.all_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
+    //         .any_mask = if (self.any_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
+    //         .archetypes = std.ArrayList(*Archetype).init(self.allocator),
+    //         .operations = [2]?QueryOperation{
+    //             query_any_op,
+    //             query_all_op,
+    //         },
+    //     };
+    //     _ = created_query;
+
+    //     // if (self.all_mask) |*mask| {
+    //     //     mask.deinit();
+    //     //     self.all_mask = null;
+    //     // }
+    //     // if (self.any_mask) |*mask| {
+    //     //     mask.deinit();
+    //     //     self.any_mask = null;
+    //     // }
+
+    //     self.prepared_query.execute2(world);
+
+    //     return self.prepared_query;
+    // }
 
     pub fn from(self: *Self, world: *World) Query {
         var created_query = Query{

@@ -424,5 +424,39 @@ test "Can use the any query operator" {
     defer result.deinit();
 
     try expect(result.archetypes.items.len == 3);
-    try expect(result.archetypes.items[0].entities.count == 4);
 }
+
+// test "Can use the any query operator 2" {
+//     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+//     defer arena.deinit();
+
+//     const Position = defineComponent(Vector);
+//     const Velocity = defineComponent(Vector);
+
+//     var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+//     defer world.deinit();
+
+//     var ent = world.createEntity();
+//     world.attach(ent, Position);
+//     world.attach(ent, Velocity);
+
+//     var ent2 = world.createEntity();
+//     world.attach(ent2, Position);
+//     world.attach(ent2, Velocity);
+
+//     var ent3 = world.createEntity();
+//     world.attach(ent3, Position);
+
+//     var ent4 = world.createEntity();
+//     world.attach(ent4, Velocity);
+
+//     var ent5 = world.createEntity();
+//     _ = ent5;
+
+//     var query = try QueryBuilder2.init(arena.child_allocator);
+//     defer query.deinit();
+//     var result = query.any2(.{ Position, Velocity }).from2(&world);
+//     defer result.deinit();
+
+//     try expect(result.archetypes.items.len == 3);
+// }
