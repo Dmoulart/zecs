@@ -8,8 +8,8 @@ const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
 const Entity = @import("./world.zig").Entity;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
-const Query2 = @import("./query-2.zig").Query2;
-const QueryBuilder2 = @import("./query-2.zig").QueryBuilder;
+const Query = @import("./query.zig").Query;
+const QueryBuilder2 = @import("./query.zig").QueryBuilder;
 
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
@@ -226,7 +226,7 @@ test "Query can target argetype" {
 
     world.attach(ent, Position);
 
-    var query = world.query().with(Position).from(&world);
+    var query = world.query().any(.{Position}).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0] == &world.archetypes.all.items[1]);
@@ -248,13 +248,13 @@ test "Can update query reactively" {
     world.attach(ent, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).from(&world);
+    var query = world.query().all(.{Position}).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = world.query().with(Velocity).from(&world);
+    var query2 = world.query().all(.{Velocity}).from(&world);
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
@@ -285,13 +285,13 @@ test "Can query multiple components" {
 
     world.attach(ent2, Position);
 
-    var query = world.query().with(Position).with(Velocity).from(&world);
+    var query = world.query().all(.{ Position, Velocity }).from(&world);
     defer query.deinit();
 
     try expect(query.archetypes.items[0].entities.has(ent));
     try expect(!query.archetypes.items[0].entities.has(ent2));
 
-    var query2 = world.query().with(Position).from(&world);
+    var query2 = world.query().all(.{Position}).from(&world);
     defer query2.deinit();
 
     try expect(!query2.archetypes.items[0].entities.has(ent));
@@ -303,28 +303,28 @@ test "Can query multiple components" {
     try expect(!query2.archetypes.items[0].entities.has(ent2));
 }
 
-test "Can iterate over query " {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena.deinit();
+// test "Can iterate over query " {
+//     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+//     defer arena.deinit();
 
-    const Position = defineComponent(Vector);
-    const Velocity = defineComponent(Vector);
+//     const Position = defineComponent(Vector);
+//     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
-    defer world.deinit();
+//     var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+//     defer world.deinit();
 
-    var ent = world.createEntity();
-    var ent2 = world.createEntity();
+//     var ent = world.createEntity();
+//     var ent2 = world.createEntity();
 
-    world.attach(ent, Position);
-    world.attach(ent, Velocity);
+//     world.attach(ent, Position);
+//     world.attach(ent, Velocity);
 
-    world.attach(ent2, Position);
-    world.attach(ent2, Velocity);
+//     world.attach(ent2, Position);
+//     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).with(Velocity).from(&world);
-    defer query.deinit();
-}
+//     var query = world.query().with(Position).with(Velocity).from(&world);
+//     defer query.deinit();
+// }
 
 test "Can iterate over query using iterator " {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -345,7 +345,7 @@ test "Can iterate over query using iterator " {
     world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
-    var query = world.query().with(Position).with(Velocity).from(&world);
+    var query = world.query().all(.{Position, Velocity}).from(&world);
     defer query.deinit();
 
     var iterator = query.iterator();

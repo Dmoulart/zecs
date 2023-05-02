@@ -98,8 +98,6 @@ pub const World = struct {
     }
 
     pub fn query(self: *Self) *QueryBuilder {
-        // oh man thats craap
-        // self.queryBuilder.world = self;
         return &self.queryBuilder;
     }
 
