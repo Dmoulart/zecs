@@ -14,6 +14,39 @@ const QueryBuilder2 = @import("./query-2.zig").QueryBuilder;
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
 pub fn main() !void {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 1_000 });
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    var ent2 = world.createEntity();
+    world.attach(ent2, Position);
+    world.attach(ent2, Velocity);
+
+    var ent3 = world.createEntity();
+    world.attach(ent3, Position);
+
+    var ent4 = world.createEntity();
+    world.attach(ent4, Velocity);
+
+    var ent5 = world.createEntity();
+    _ = ent5;
+
+    var query = try QueryBuilder2.init(arena.child_allocator);
+    defer query.deinit();
+    var result = query.any(.{ Position, Velocity }).from(&world);
+    defer result.deinit();
+
+    std.debug.print("archs {}", .{result.archetypes.items.len});
+    std.debug.print("first arch count {}", .{result.archetypes.items[2].entities.count});
 
     // _ = world.createEntity();
 
@@ -325,7 +358,7 @@ test "Can iterate over query using iterator " {
     try expect(counter == 2);
 }
 
-test "Can use all query operator" {
+test "Can use the all query operator" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -358,7 +391,7 @@ test "Can use all query operator" {
     try expect(result.archetypes.items[0].entities.count == 2);
 }
 
-test "Can use any query operator" {
+test "Can use the any query operator" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 

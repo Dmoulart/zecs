@@ -23,6 +23,7 @@ fn intersects(bitset: *std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBit
 
     for (bitset.unmanaged.masks[0..num_masks]) |*mask, i| {
         if (mask.* & other.unmanaged.masks[i] > 0) {
+            std.debug.print("\n{} & {}", .{ mask.*, other.unmanaged.masks[i] });
             return true;
         }
     }
@@ -99,6 +100,7 @@ pub const Query = struct {
             if (self.any_mask) |*mask| {
                 if (intersects(mask, &archetype.mask)) {
                     _ = self.archetypes.append(archetype) catch null;
+                    continue;
                 }
             }
             if (self.all_mask) |*mask| {
@@ -125,8 +127,8 @@ pub const QueryBuilder = struct {
 
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
         return QueryBuilder{
-            .all_mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, MAX_COMPONENTS_PER_QUERY_MATCHER),
-            .any_mask = try std.bit_set.DynamicBitSet.initEmpty(allocator, MAX_COMPONENTS_PER_QUERY_MATCHER),
+            .all_mask = null,
+            .any_mask = null,
             .allocator = allocator,
         };
     }
