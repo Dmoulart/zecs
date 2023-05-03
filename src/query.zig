@@ -156,6 +156,31 @@ pub const Query = struct {
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
+pub const QueryMatcherType = enum { any, all, not, none };
+
+// pub const QueryMatcher = struct {
+//     type: QueryMatcherType,
+//     match: fn (*const std.bit_set.DynamicBitSet, *const std.bit_set.DynamicBitSet) bool,
+// };
+
+pub fn QueryMatcher(op: QueryMatcherType, matchFn: fn (*const std.bit_set.DynamicBitSet, *const std.bit_set.DynamicBitSet) bool) type {
+    return struct {
+        const op_type = op;
+        const match = matchFn;
+        mask: std.bit_set.DynamicBitSet,
+    };
+}
+
+const QueryAny = QueryMatcher(.any, intersects);
+const QueryAll = QueryMatcher(.all, contains);
+
+// pub fn QueryOperation(config: type) type {
+//     _ = config;
+//     return struct {
+//         const Self = @This();
+//     };
+// }
+
 // pub const QueryOperationTag = enum { any, all };
 
 // pub const QueryOperation = union(QueryOperationTag) {
