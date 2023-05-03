@@ -40,15 +40,15 @@ pub const Query = struct {
     }
 
     fn execute(self: *Self, world: *World) void {
-        for (world.archetypes.all.items) |*archetype| {
+        archetypes_loop: for (world.archetypes.all.items) |*archetype| {
             for (self.matchers.items) |*matcher| {
                 const mask = &matcher.mask;
 
-                if (matcher.match(mask, &archetype.mask)) {
-                    _ = self.archetypes.append(archetype) catch null;
-                    continue;
-                }
+                if (!matcher.match(mask, &archetype.mask))
+                    continue :archetypes_loop;
             }
+            
+            _ = self.archetypes.append(archetype) catch null;
         }
     }
 

@@ -19,7 +19,7 @@ pub fn main() !void {
 
     const Position = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -35,7 +35,7 @@ test "Can create Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -47,7 +47,7 @@ test "Can remove Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -82,7 +82,7 @@ test "Can recycle Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -100,7 +100,7 @@ test "Can attach component" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -121,7 +121,7 @@ test "Can detach component" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -146,7 +146,7 @@ test "Can generate archetype" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -164,7 +164,7 @@ test "Query can target argetype" {
 
     const Position = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -184,7 +184,7 @@ test "Query update reactively" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -219,7 +219,7 @@ test "Can query multiple components" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -255,7 +255,7 @@ test "Can iterate over query using iterator " {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -286,7 +286,7 @@ test "Can use the all query operator" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -319,7 +319,7 @@ test "Can use the any query operator" {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -349,7 +349,7 @@ test "Can use the not operator" {
     const Velocity = defineComponent(Vector);
     const Health = defineComponent(struct { points: u32 });
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -376,9 +376,9 @@ test "Can use the none operator" {
 
     const Comp1 = defineComponent(Vector);
     const Comp2 = defineComponent(struct { field: u32 });
-    const Comp3 = defineComponent(struct { field2: u32 });
+    const Comp3 = defineComponent(struct { field: u32 });
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
     var ent = world.createEntity();
@@ -397,4 +397,46 @@ test "Can use the none operator" {
     for (query.archetypes.items) |arch| {
         try expect(!arch.entities.has(ent));
     }
+}
+
+test "Can combine query operators" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const Comp1 = defineComponent(struct { field: u32 });
+    const Comp2 = defineComponent(struct { field: u32 });
+    const Comp3 = defineComponent(struct { field: u32 });
+    const Comp4 = defineComponent(struct { field: u32 });
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
+    defer world.deinit();
+
+    var ent = world.createEntity();
+    world.attach(ent, Comp1);
+
+    var ent2 = world.createEntity();
+    world.attach(ent2, Comp1);
+    world.attach(ent2, Comp2);
+    world.attach(ent2, Comp3);
+
+    var ent3 = world.createEntity();
+    world.attach(ent3, Comp3);
+    world.attach(ent3, Comp4);
+
+    var ent4 = world.createEntity();
+    world.attach(ent4, Comp1);
+    world.attach(ent4, Comp4);
+
+    var query = world.query()
+        .not(.{Comp2})
+        .any(.{ Comp3, Comp4, Comp1 })
+        .none(.{ Comp1, Comp4 })
+        .from(&world);
+
+    defer query.deinit();
+
+    try expect(query.has(ent));
+    try expect(!query.has(ent2));
+    try expect(query.has(ent3));
+    try expect(!query.has(ent4));
 }
