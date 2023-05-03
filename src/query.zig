@@ -47,7 +47,7 @@ pub const Query = struct {
                 if (!matcher.match(mask, &archetype.mask))
                     continue :archetypes_loop;
             }
-            
+
             _ = self.archetypes.append(archetype) catch null;
         }
     }
@@ -85,10 +85,13 @@ pub const QueryBuilder = struct {
 
     matchers: std.ArrayList(QueryMatcher),
 
+    world: *World,
+
     pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
         return QueryBuilder{
             .allocator = allocator,
             .matchers = std.ArrayList(QueryMatcher).init(allocator),
+            .world = undefined,
         };
     }
 
@@ -133,12 +136,12 @@ pub const QueryBuilder = struct {
         self.matchers.append(QueryMatcher{ .op_type = matcher_type, .mask = mask }) catch unreachable;
     }
 
-    pub fn from(self: *Self, world: *World) Query {
+    pub fn execute(self: *Self) Query {
         var created_query = Query.init(self.matchers.clone() catch unreachable, self.allocator);
 
         self.matchers.clearAndFree();
 
-        created_query.execute(world);
+        created_query.execute(self.world);
 
         return created_query;
     }

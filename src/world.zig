@@ -98,6 +98,8 @@ pub const World = struct {
     }
 
     pub fn query(self: *Self) *QueryBuilder {
+        // Errrk ugly stuff
+        self.queryBuilder.world = self;
         return &self.queryBuilder;
     }
 
