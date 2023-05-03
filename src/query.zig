@@ -145,6 +145,13 @@ pub const Query = struct {
             }
         }
     }
+
+    pub fn has(self: *Self, entity: Entity) bool {
+        for (self.archetypes.items) |arch| {
+            if (arch.entities.has(entity)) return true;
+        }
+        return false;
+    }
 };
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
@@ -272,6 +279,9 @@ pub const QueryBuilder = struct {
         return self;
     }
 
+    //
+    // Select the archetypes which does not posess at least one of the components.
+    //
     pub fn not(self: *Self, data: anytype) *Self {
         const components = std.meta.fields(@TypeOf(data));
 
@@ -287,6 +297,9 @@ pub const QueryBuilder = struct {
         return self;
     }
 
+    //
+    // Select the archetypes which does not posess the entire set of component.
+    //
     pub fn none(self: *Self, data: anytype) *Self {
         const components = std.meta.fields(@TypeOf(data));
 
