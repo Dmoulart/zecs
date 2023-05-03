@@ -13,7 +13,23 @@ const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
-pub fn main() !void {}
+pub fn main() !void {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    const Position = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 10_000 });
+    defer world.deinit();
+
+    var ent = world.createEntity();
+
+    world.attach(ent, Position);
+
+    var query = world.query().any(.{Position}).from(&world);
+    defer query.deinit();
+    std.debug.print("res {}", .{query.archetypes.items.len});
+}
 
 test "Can create Entity" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);

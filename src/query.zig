@@ -65,14 +65,23 @@ pub const QueryIterator = struct {
 pub const Query = struct {
     const Self = @This();
 
-    all_mask: ?std.bit_set.DynamicBitSet,
-    any_mask: ?std.bit_set.DynamicBitSet,
-    not_mask: ?std.bit_set.DynamicBitSet,
-    none_mask: ?std.bit_set.DynamicBitSet,
-
     archetypes: std.ArrayList(*Archetype),
 
-    // operations: [2]?QueryOperation = .{ null, null },
+    matchers: std.ArrayList(QueryMatcher),
+
+    allocator: std.mem.Allocator,
+
+    pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Query {
+        // var operations_buffer: [10]QueryMatcher = undefined;
+        // _ = operations_buffer;
+        var query = Query{
+            .allocator = allocator,
+            .matchers = matchers,
+            .archetypes = std.ArrayList(*Archetype).init(allocator),
+        };
+
+        return query;
+    }
 
     // pub fn each(self: *Self, function: fn (entity: Entity) void) void {
     //     for (self.archetypes) |arch| {
@@ -90,55 +99,17 @@ pub const Query = struct {
 
     pub fn deinit(self: *Self) void {
         self.archetypes.deinit();
-        if (self.all_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.any_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.not_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.none_mask) |*mask| {
-            mask.deinit();
+        for (self.matchers.items) |*matcher| {
+            matcher.deinit();
         }
     }
 
-    // fn execute2(self: *Self, world: *World) void {
-    //     archloop: for (world.archetypes.all.items) |*archetype| {
-    //         for (self.operations) |operation| {
-    //             if (operation) |*op| {
-    //                 if (op.match(archetype)) {
-    //                     _ = self.archetypes.append(archetype) catch null;
-    //                     continue :archloop;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     fn execute(self: *Self, world: *World) void {
         for (world.archetypes.all.items) |*archetype| {
-            if (self.any_mask) |*mask| {
-                if (intersects(mask, &archetype.mask)) {
-                    _ = self.archetypes.append(archetype) catch null;
-                    continue;
-                }
-            }
-            if (self.all_mask) |*mask| {
-                if (contains(mask, &archetype.mask)) {
-                    _ = self.archetypes.append(archetype) catch null;
-                    continue;
-                }
-            }
-            if (self.not_mask) |*mask| {
-                if (!intersects(mask, &archetype.mask)) {
-                    _ = self.archetypes.append(archetype) catch null;
-                    continue;
-                }
-            }
-            if (self.none_mask) |*mask| {
-                if (!contains(mask, &archetype.mask)) {
+            for (self.matchers.items) |*matcher| {
+                const mask = &matcher.mask;
+
+                if (matcher.match(mask, &archetype.mask)) {
                     _ = self.archetypes.append(archetype) catch null;
                     continue;
                 }
@@ -158,21 +129,23 @@ pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
 pub const QueryMatcherType = enum { any, all, not, none };
 
-// pub const QueryMatcher = struct {
-//     type: QueryMatcherType,
-//     match: fn (*const std.bit_set.DynamicBitSet, *const std.bit_set.DynamicBitSet) bool,
-// };
+pub const QueryMatcher = struct {
+    const Self = @This();
+    op_type: QueryMatcherType,
+    mask: std.bit_set.DynamicBitSet,
 
-pub fn QueryMatcher(op: QueryMatcherType, matchFn: fn (*const std.bit_set.DynamicBitSet, *const std.bit_set.DynamicBitSet) bool) type {
-    return struct {
-        const op_type = op;
-        const match = matchFn;
-        mask: std.bit_set.DynamicBitSet,
-    };
-}
-
-const QueryAny = QueryMatcher(.any, intersects);
-const QueryAll = QueryMatcher(.all, contains);
+    pub fn deinit(self: *Self) void {
+        self.mask.deinit();
+    }
+    pub fn match(self: *Self, bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+        return switch (self.op_type) {
+            .any => intersects(bitset, other),
+            .all => contains(bitset, other),
+            .not => !intersects(bitset, other),
+            .none => !contains(bitset, other),
+        };
+    }
+};
 
 // pub fn QueryOperation(config: type) type {
 //     _ = config;
@@ -203,202 +176,67 @@ const QueryAll = QueryMatcher(.all, contains);
 //     }
 // };
 
+const QUERY_MATCHERS_LIST_CAPACITY = 20;
 pub const QueryBuilder = struct {
     const Self = @This();
 
-    all_mask: ?std.bit_set.DynamicBitSet = null,
-    any_mask: ?std.bit_set.DynamicBitSet = null,
-    not_mask: ?std.bit_set.DynamicBitSet = null,
-    none_mask: ?std.bit_set.DynamicBitSet = null,
-
-    // operations: [2]?QueryOperation = .{ null, null },
-
-    // prepared_query: Query,
-
     allocator: std.mem.Allocator,
-    // query(.{.all= {Position, Velocity}, .any={}})
-    pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        // var operations = try allocator.alloc(QueryOperation, @typeInfo(QueryOperationTag).Enum.fields.len);
-        // errdefer allocator.free(operations);
 
-        return QueryBuilder{
-            .all_mask = null,
-            .any_mask = null,
-            .not_mask = null,
-            .none_mask = null,
-            .allocator = allocator,
-            // .operations = undefined,
-            // .prepared_query = Query{
-            //     .all_mask = null,
-            //     .any_mask = null,
-            //     // .operations = [2]?QueryOperation{ null, null },
-            //     .archetypes = std.ArrayList(*Archetype).init(allocator),
-            // },
-        };
+    matchers: std.ArrayList(QueryMatcher),
+
+    pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
+        var matchers = std.ArrayList(QueryMatcher).init(allocator);
+        matchers.ensureTotalCapacity(QUERY_MATCHERS_LIST_CAPACITY) catch unreachable;
+        return QueryBuilder{ .allocator = allocator, .matchers = matchers };
     }
 
     pub fn deinit(self: *Self) void {
-        if (self.all_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.any_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.not_mask) |*mask| {
-            mask.deinit();
-        }
-        if (self.none_mask) |*mask| {
-            mask.deinit();
-        }
-        // self.allocator.free(self.operations);
+        self.matchers.deinit();
     }
 
-    // pub fn any2(self: *Self, data: anytype) *Self {
-    //     const components = std.meta.fields(@TypeOf(data));
-
-    //     var op_index = @enumToInt(QueryOperationTag.any);
-
-    //     if (self.prepared_query.operations[op_index] == null) |_| {
-    //         self.prepared_query.operations[op_index] = QueryOperation{
-    //             .any = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch unreachable,
-    //         };
-    //     }
-
-    //     var op = if (self.prepared_query.operations[op_index]) |*op| op else unreachable;
-
-    //     inline for (components) |field| {
-    //         var component = @field(data, field.name);
-    //         op.any.set(component.id);
-    //     }
-
-    //     return self;
-    // }
-
     pub fn any(self: *Self, data: anytype) *Self {
-        const components = std.meta.fields(@TypeOf(data));
-
-        if (self.any_mask == null) {
-            self.any_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
-        }
-
-        inline for (components) |field| {
-            var component = @field(data, field.name);
-            self.any_mask.?.set(component.id);
-        }
-
+        self.createMatcher(data, .any);
         return self;
     }
 
     pub fn all(self: *Self, data: anytype) *Self {
-        const components = std.meta.fields(@TypeOf(data));
-
-        if (self.all_mask == null) {
-            self.all_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
-        }
-
-        inline for (components) |field| {
-            var component = @field(data, field.name);
-            self.all_mask.?.set(component.id);
-        }
-
+        self.createMatcher(data, .all);
         return self;
     }
-
     //
     // Select the archetypes which does not posess at least one of the components.
     //
     pub fn not(self: *Self, data: anytype) *Self {
-        const components = std.meta.fields(@TypeOf(data));
-
-        if (self.not_mask == null) {
-            self.not_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
-        }
-
-        inline for (components) |field| {
-            var component = @field(data, field.name);
-            self.not_mask.?.set(component.id);
-        }
-
+        self.createMatcher(data, .not);
         return self;
     }
-
     //
     // Select the archetypes which does not posess the entire set of component.
     //
     pub fn none(self: *Self, data: anytype) *Self {
-        const components = std.meta.fields(@TypeOf(data));
-
-        if (self.none_mask == null) {
-            self.none_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
-        }
-
-        inline for (components) |field| {
-            var component = @field(data, field.name);
-            self.none_mask.?.set(component.id);
-        }
-
+        self.createMatcher(data, .none);
         return self;
     }
 
-    // pub fn from2(self: *Self, world: *World) Query {
-    //     var query_any_op = if (self.operations[0]) |*op| QueryOperation{
-    //         .any = op.any.clone(self.allocator) catch std.bit_set.DynamicBitSet,
-    //     } else null;
+    fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
+        const components = std.meta.fields(@TypeOf(data));
 
-    //     var query_all_op = if (self.operations[1]) |*op| QueryOperation{
-    //         .all = op.all.clone(self.allocator) catch null,
-    //     } else null;
+        var mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch unreachable;
 
-    //     var created_query = Query{
-    //         .all_mask = if (self.all_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-    //         .any_mask = if (self.any_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-    //         .archetypes = std.ArrayList(*Archetype).init(self.allocator),
-    //         .operations = [2]?QueryOperation{
-    //             query_any_op,
-    //             query_all_op,
-    //         },
-    //     };
-    //     _ = created_query;
+        inline for (components) |field| {
+            var component = @field(data, field.name);
+            mask.set(component.id);
+        }
 
-    //     // if (self.all_mask) |*mask| {
-    //     //     mask.deinit();
-    //     //     self.all_mask = null;
-    //     // }
-    //     // if (self.any_mask) |*mask| {
-    //     //     mask.deinit();
-    //     //     self.any_mask = null;
-    //     // }
-
-    //     self.prepared_query.execute2(world);
-
-    //     return self.prepared_query;
-    // }
+        self.matchers.appendAssumeCapacity(QueryMatcher{ .op_type = matcher_type, .mask = mask });
+    }
 
     pub fn from(self: *Self, world: *World) Query {
-        var created_query = Query{
-            .all_mask = if (self.all_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-            .any_mask = if (self.any_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-            .not_mask = if (self.not_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-            .none_mask = if (self.none_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
-            .archetypes = std.ArrayList(*Archetype).init(self.allocator),
-        };
+        var created_query = Query.init(self.matchers.clone() catch unreachable, self.allocator);
 
-        if (self.all_mask) |*mask| {
-            mask.deinit();
-            self.all_mask = null;
-        }
-        if (self.any_mask) |*mask| {
-            mask.deinit();
-            self.any_mask = null;
-        }
-        if (self.not_mask) |*mask| {
-            mask.deinit();
-            self.not_mask = null;
-        }
-        if (self.none_mask) |*mask| {
-            mask.deinit();
-            self.none_mask = null;
-        }
+        self.matchers.clearAndFree();
+
+        self.matchers.ensureTotalCapacity(QUERY_MATCHERS_LIST_CAPACITY) catch unreachable;
 
         created_query.execute(world);
 
