@@ -22,6 +22,7 @@ pub fn main() !void {
         .hp = 20,
     });
 
+    // soa.get(index: usize)
     // Count the number of fire monsters
     var total_fire: usize = 0;
     for (soa.items(.element)) |t| {

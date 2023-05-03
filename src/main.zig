@@ -18,13 +18,22 @@ pub fn main() !void {
     defer arena.deinit();
 
     const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 1_000_000 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var i: u32 = 0;
 
-    world.attach(ent, Position);
+    var before = std.time.milliTimestamp();
+    while (i < 1_000_000) : (i += 1) {
+        var ent = world.createEntity();
+        world.attach(ent, Position);
+        world.attach(ent, Velocity);
+    }
+
+    var now = std.time.milliTimestamp();
+    std.debug.print("{}ms", .{now - before});
 
     var query = world.query().any(.{Position}).execute();
     defer query.deinit();
