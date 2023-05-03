@@ -105,8 +105,7 @@ pub const World = struct {
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
         var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
-
-        if (archetype.edge.get(component.id)) |edge| {
+        if (archetype.edge2.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
         } else {
             var new_archetype = self.archetypes.derive(archetype, component.id);

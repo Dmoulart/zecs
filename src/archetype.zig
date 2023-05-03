@@ -2,7 +2,9 @@ const std = @import("std");
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
+const SparseMap = @import("./sparse-map.zig").SparseMap;
 const Entity = @import("./entity-storage.zig").Entity;
+
 const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
 
 pub const ArchetypeMask = std.bit_set.DynamicBitSet;
@@ -19,12 +21,14 @@ pub const Archetype = struct {
     entities: SparseSet(Entity),
 
     edge: ArchetypeEdge,
+    edge2: SparseMap(ComponentId, *Archetype),
 
     capacity: u32,
 
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
         self.edge.deinit();
+        self.edge2.deinit();
         self.entities.deinit();
     }
 
@@ -33,7 +37,16 @@ pub const Archetype = struct {
         var edge = ArchetypeEdge.init(allocator);
         try edge.ensureTotalCapacity(capacity);
 
-        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge, .capacity = capacity };
+        return Archetype{
+            .mask = mask,
+            .entities = SparseSet(Entity).init(allocator),
+            .edge = edge,
+            .edge2 = SparseMap(ComponentId, *Archetype).init(.{
+                .allocator = allocator,
+                .capacity = capacity,
+            }),
+            .capacity = capacity,
+        };
     }
 
     pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) !Archetype {
@@ -41,9 +54,20 @@ pub const Archetype = struct {
         mask.toggle(id);
 
         var edge = ArchetypeEdge.init(allocator);
-        try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
+        // try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
 
-        return Archetype{ .mask = mask, .entities = SparseSet(Entity).init(allocator), .edge = edge, .capacity = capacity };
+        var edge2 = SparseMap(ComponentId, *Archetype).init(.{
+            .allocator = allocator,
+            .capacity = capacity,
+        });
+
+        return Archetype{
+            .mask = mask,
+            .entities = SparseSet(Entity).init(allocator),
+            .edge = edge,
+            .edge2 = edge2,
+            .capacity = capacity,
+        };
     }
 
     pub fn has(self: *Self, id: ComponentId) bool {

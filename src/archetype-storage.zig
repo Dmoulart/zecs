@@ -27,7 +27,12 @@ pub const ArchetypeStorage = struct {
 
         var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
 
-        var storage = Self{ .allocator = allocator, .all = all, .capacity = capacity, .archetype_capacity = archetype_capacity };
+        var storage = Self{
+            .allocator = allocator,
+            .all = all,
+            .capacity = capacity,
+            .archetype_capacity = archetype_capacity,
+        };
 
         var root = try Archetype.build(.{}, allocator, archetype_capacity);
 
@@ -47,8 +52,10 @@ pub const ArchetypeStorage = struct {
         var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity) catch unreachable;
         var new_archetype = self.register(&derived);
 
-        new_archetype.edge.putAssumeCapacity(component_id, archetype);
-        archetype.edge.putAssumeCapacity(component_id, new_archetype);
+        // new_archetype.edge.putAssumeCapacity(component_id, archetype);
+        new_archetype.edge2.set(component_id, archetype);
+        // archetype.edge.putAssumeCapacity(component_id, new_archetype);
+        archetype.edge2.set(component_id, new_archetype);
 
         return new_archetype;
     }

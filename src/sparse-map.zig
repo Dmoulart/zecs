@@ -4,8 +4,6 @@ const assert = std.debug.assert;
 
 const DEFAULT_SPARSE_MAP_CAPACITY: u64 = 100_000;
 
-const CAPACITY_GROW_FACTOR: u32 = DEFAULT_SPARSE_MAP_CAPACITY;
-
 pub fn SparseMap(comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
@@ -14,22 +12,21 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
         keys: []K = undefined,
         values: []V = undefined,
         count: K = 0,
-        capacity: u64 = DEFAULT_SPARSE_MAP_CAPACITY,
+        capacity: u64,
 
         pub const SparseMapOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };
 
         pub fn init(options: SparseMapOptions) Self {
             var allocator = options.allocator;
             var capacity = options.capacity orelse DEFAULT_SPARSE_MAP_CAPACITY;
-            
             // err handling anyone ?
-            var indices = allocator.alloc(K, capacity) catch unreachable;
+            var indices = allocator.alloc(K, capacity + 1) catch unreachable;
             errdefer allocator.free(indices);
 
-            var keys = allocator.alloc(K, capacity) catch unreachable;
+            var keys = allocator.alloc(K, capacity + 1) catch unreachable;
             errdefer allocator.free(keys);
 
-            var values = allocator.alloc(V, capacity) catch unreachable;
+            var values = allocator.alloc(V, capacity + 1) catch unreachable;
             errdefer allocator.free(values);
 
             return SparseMap(K, V){
@@ -38,6 +35,7 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
                 .values = values,
                 .keys = keys,
                 .count = 0,
+                .capacity = capacity,
             };
         }
 
@@ -48,7 +46,7 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
         }
 
         pub fn set(self: *Self, key: K, value: V) void {
-            if (self.count == self.capacity or key >= self.capacity) {
+            if (self.count == self.capacity or key >= self.indices.len) {
                 self.grow();
             }
             self.keys[self.count] = key;
@@ -64,8 +62,8 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
 
         pub fn get(self: *Self, key: K) ?V {
             var index = self.indices[key];
-            assert(index < self.count);
-            return self.values[index];
+            // assert(index < self.count);
+            return if (index < self.count) self.values[index] else null;
         }
 
         pub fn delete(self: *Self, key: K) void {
@@ -84,10 +82,17 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
         }
 
         fn grow(self: *Self) void {
-            self.indices = self.allocator.realloc(self.indices, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
-            self.values = self.allocator.realloc(self.values, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
-            self.keys = self.allocator.realloc(self.keys, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
-            self.capacity += CAPACITY_GROW_FACTOR;
+            var grow_by = self.getGrowFactor();
+
+            self.indices = self.allocator.realloc(self.indices, self.capacity + grow_by) catch unreachable;
+            self.values = self.allocator.realloc(self.values, self.capacity + grow_by) catch unreachable;
+            self.keys = self.allocator.realloc(self.keys, self.capacity + grow_by) catch unreachable;
+
+            self.capacity += grow_by;
+        }
+
+        fn getGrowFactor(self: *Self) u64 {
+            return self.capacity * 2;
         }
     };
 }

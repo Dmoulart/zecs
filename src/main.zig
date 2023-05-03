@@ -20,14 +20,16 @@ pub fn main() !void {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 1_000_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 2_000_000 });
     defer world.deinit();
 
     var i: u32 = 0;
 
     var before = std.time.milliTimestamp();
-    while (i < 1_000_000) : (i += 1) {
+
+    while (i < 10_000) : (i += 1) {
         var ent = world.createEntity();
+
         world.attach(ent, Position);
         world.attach(ent, Velocity);
     }
@@ -37,7 +39,6 @@ pub fn main() !void {
 
     var query = world.query().any(.{Position}).execute();
     defer query.deinit();
-    std.debug.print("res {}", .{query.archetypes.items.len});
 }
 
 test "Can create Entity" {

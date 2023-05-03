@@ -23,20 +23,22 @@ pub const EntityStorage = struct {
     count: u32 = 0,
 
     const EntityStorageOptions = struct {
-        capacity: u32 = DEFAULT_ENTITIES_STORAGE_CAPACITY,
+        capacity: ?u32,
         allocator: std.mem.Allocator,
     };
 
     pub fn init(options: EntityStorageOptions) !Self {
+        const capacity: u32 = options.capacity orelse DEFAULT_ENTITIES_STORAGE_CAPACITY;
+
         var deletedEntities = std.ArrayList(Entity).init(options.allocator);
-        try deletedEntities.ensureTotalCapacity(options.capacity);
+        try deletedEntities.ensureTotalCapacity(capacity);
 
         return Self{
             .allocator = options.allocator,
-            .capacity = options.capacity,
+            .capacity = capacity,
             .all = SparseMap(Entity, *Archetype).init(.{
                 .allocator = options.allocator,
-                .capacity = options.capacity,
+                .capacity = capacity,
             }),
             .deleted = deletedEntities,
         };
