@@ -1,5 +1,6 @@
 const std = @import("std");
 const Archetype = @import("./archetype.zig").Archetype;
+const SparseMap = @import("./sparse-map.zig").SparseMap;
 const assert = @import("std").debug.assert;
 
 pub const DEFAULT_ENTITIES_STORAGE_CAPACITY = 10_000;
@@ -13,7 +14,7 @@ pub const EntityStorage = struct {
 
     allocator: std.mem.Allocator,
 
-    all: std.AutoHashMap(Entity, *Archetype),
+    all: SparseMap(Entity, *Archetype),
 
     deleted: std.ArrayList(Entity),
 
@@ -27,16 +28,16 @@ pub const EntityStorage = struct {
     };
 
     pub fn init(options: EntityStorageOptions) !Self {
-        var entitiesArchetypes = std.AutoHashMap(Entity, *Archetype).init(options.allocator);
-        try entitiesArchetypes.ensureTotalCapacity(options.capacity);
-
         var deletedEntities = std.ArrayList(Entity).init(options.allocator);
         try deletedEntities.ensureTotalCapacity(options.capacity);
 
         return Self{
             .allocator = options.allocator,
             .capacity = options.capacity,
-            .all = entitiesArchetypes,
+            .all = SparseMap(Entity, *Archetype).init(.{
+                .allocator = options.allocator,
+                .capacity = options.capacity,
+            }),
             .deleted = deletedEntities,
         };
     }
@@ -50,7 +51,6 @@ pub const EntityStorage = struct {
 
     pub fn create(self: *Self, archetype: *Archetype) Entity {
         if (self.count == self.capacity) {
-            self.all.ensureTotalCapacity(self.capacity + self.getGrowFactor()) catch unreachable;
             self.capacity += self.getGrowFactor();
         }
 
@@ -65,7 +65,7 @@ pub const EntityStorage = struct {
 
         archetype.entities.add(created_entity);
 
-        self.all.putAssumeCapacity(created_entity, archetype);
+        self.all.set(created_entity, archetype);
 
         self.count += 1;
 
@@ -78,7 +78,7 @@ pub const EntityStorage = struct {
         var archetype = self.all.get(entity) orelse unreachable;
 
         archetype.entities.remove(entity);
-        _ = self.all.remove(entity);
+        _ = self.all.delete(entity);
 
         self.deleted.appendAssumeCapacity(entity);
 
@@ -90,11 +90,11 @@ pub const EntityStorage = struct {
     }
 
     pub fn setArchetype(self: *Self, entity: Entity, archetype: *Archetype) void {
-        self.all.putAssumeCapacity(entity, archetype);
+        self.all.set(entity, archetype);
     }
 
     pub fn contains(self: *Self, entity: Entity) bool {
-        return self.all.contains(entity);
+        return self.all.has(entity);
     }
 
     fn getGrowFactor(self: *Self) u32 {
