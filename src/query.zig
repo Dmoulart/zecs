@@ -138,7 +138,6 @@ pub const Query = struct {
                 }
             }
             if (self.none_mask) |*mask| {
-                std.debug.print("\nnone", .{});
                 if (!contains(mask, &archetype.mask)) {
                     _ = self.archetypes.append(archetype) catch null;
                     continue;
