@@ -8,9 +8,9 @@ fn numMasks(bit_length: usize) usize {
     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
 }
 fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-    const num_masks = numMasks(bitset.unmanaged.bit_length);
+    const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
 
-    for (bitset.unmanaged.masks[0..num_masks]) |*mask, i| {
+    for (bitset.unmanaged.masks[0..len]) |*mask, i| {
         if (mask.* & other.unmanaged.masks[i] != mask.*) {
             return false;
         }
@@ -19,9 +19,9 @@ fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.Dynami
     return true;
 }
 fn intersects(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-    const num_masks = numMasks(bitset.unmanaged.bit_length);
+    const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
 
-    for (bitset.unmanaged.masks[0..num_masks]) |*mask, i| {
+    for (bitset.unmanaged.masks[0..len]) |*mask, i| {
         if (mask.* & other.unmanaged.masks[i] > 0) {
             return true;
         }
@@ -67,6 +67,8 @@ pub const Query = struct {
 
     all_mask: ?std.bit_set.DynamicBitSet,
     any_mask: ?std.bit_set.DynamicBitSet,
+    not_mask: ?std.bit_set.DynamicBitSet,
+    none_mask: ?std.bit_set.DynamicBitSet,
 
     archetypes: std.ArrayList(*Archetype),
 
@@ -94,6 +96,12 @@ pub const Query = struct {
         if (self.any_mask) |*mask| {
             mask.deinit();
         }
+        if (self.not_mask) |*mask| {
+            mask.deinit();
+        }
+        if (self.none_mask) |*mask| {
+            mask.deinit();
+        }
     }
 
     // fn execute2(self: *Self, world: *World) void {
@@ -119,6 +127,19 @@ pub const Query = struct {
             }
             if (self.all_mask) |*mask| {
                 if (contains(mask, &archetype.mask)) {
+                    _ = self.archetypes.append(archetype) catch null;
+                    continue;
+                }
+            }
+            if (self.not_mask) |*mask| {
+                if (!intersects(mask, &archetype.mask)) {
+                    _ = self.archetypes.append(archetype) catch null;
+                    continue;
+                }
+            }
+            if (self.none_mask) |*mask| {
+                std.debug.print("\nnone", .{});
+                if (!contains(mask, &archetype.mask)) {
                     _ = self.archetypes.append(archetype) catch null;
                     continue;
                 }
@@ -156,6 +177,8 @@ pub const QueryBuilder = struct {
 
     all_mask: ?std.bit_set.DynamicBitSet = null,
     any_mask: ?std.bit_set.DynamicBitSet = null,
+    not_mask: ?std.bit_set.DynamicBitSet = null,
+    none_mask: ?std.bit_set.DynamicBitSet = null,
 
     // operations: [2]?QueryOperation = .{ null, null },
 
@@ -170,6 +193,8 @@ pub const QueryBuilder = struct {
         return QueryBuilder{
             .all_mask = null,
             .any_mask = null,
+            .not_mask = null,
+            .none_mask = null,
             .allocator = allocator,
             // .operations = undefined,
             // .prepared_query = Query{
@@ -188,7 +213,12 @@ pub const QueryBuilder = struct {
         if (self.any_mask) |*mask| {
             mask.deinit();
         }
-
+        if (self.not_mask) |*mask| {
+            mask.deinit();
+        }
+        if (self.none_mask) |*mask| {
+            mask.deinit();
+        }
         // self.allocator.free(self.operations);
     }
 
@@ -243,6 +273,36 @@ pub const QueryBuilder = struct {
         return self;
     }
 
+    pub fn not(self: *Self, data: anytype) *Self {
+        const components = std.meta.fields(@TypeOf(data));
+
+        if (self.not_mask == null) {
+            self.not_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
+        }
+
+        inline for (components) |field| {
+            var component = @field(data, field.name);
+            self.not_mask.?.set(component.id);
+        }
+
+        return self;
+    }
+
+    pub fn none(self: *Self, data: anytype) *Self {
+        const components = std.meta.fields(@TypeOf(data));
+
+        if (self.none_mask == null) {
+            self.none_mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch null;
+        }
+
+        inline for (components) |field| {
+            var component = @field(data, field.name);
+            self.none_mask.?.set(component.id);
+        }
+
+        return self;
+    }
+
     // pub fn from2(self: *Self, world: *World) Query {
     //     var query_any_op = if (self.operations[0]) |*op| QueryOperation{
     //         .any = op.any.clone(self.allocator) catch std.bit_set.DynamicBitSet,
@@ -281,6 +341,8 @@ pub const QueryBuilder = struct {
         var created_query = Query{
             .all_mask = if (self.all_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
             .any_mask = if (self.any_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
+            .not_mask = if (self.not_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
+            .none_mask = if (self.none_mask) |mask| mask.clone(self.allocator) catch unreachable else null,
             .archetypes = std.ArrayList(*Archetype).init(self.allocator),
         };
 
@@ -291,6 +353,14 @@ pub const QueryBuilder = struct {
         if (self.any_mask) |*mask| {
             mask.deinit();
             self.any_mask = null;
+        }
+        if (self.not_mask) |*mask| {
+            mask.deinit();
+            self.not_mask = null;
+        }
+        if (self.none_mask) |*mask| {
+            mask.deinit();
+            self.none_mask = null;
         }
 
         created_query.execute(world);
