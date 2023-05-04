@@ -46,7 +46,6 @@ pub const World = struct {
             .allocator = options.allocator,
             .capacity = capacity,
         });
-        entities.fillStack();
 
         var world = Self{
             .allocator = options.allocator,
@@ -67,10 +66,6 @@ pub const World = struct {
         self.archetypes.deinit();
         self.entities.deinit();
         self.queryBuilder.deinit();
-    }
-
-    pub fn popEntity(self: *Self) Entity {
-        return self.entities.pop(self.root);
     }
 
     pub fn createEntity(self: *Self) Entity {

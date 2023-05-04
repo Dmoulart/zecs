@@ -99,7 +99,7 @@ pub fn main() !void {
         var before = std.time.milliTimestamp();
 
         while (i < n) : (i += 1) {
-            var ent = world.popEntity();
+            var ent = world.createEntity();
 
             world.attach(ent, &Position);
             world.attach(ent, &Velocity);
