@@ -39,7 +39,10 @@ pub const Archetype = struct {
 
         return Archetype{
             .mask = mask,
-            .entities = SparseSet(Entity).init(allocator),
+            .entities = SparseSet(Entity).init(.{
+                .allocator = allocator,
+                .capacity = capacity,
+            }),
             .edge = edge,
             .edge2 = SparseMap(ComponentId, *Archetype).init(.{
                 .allocator = allocator,
@@ -63,7 +66,10 @@ pub const Archetype = struct {
 
         return Archetype{
             .mask = mask,
-            .entities = SparseSet(Entity).init(allocator),
+            .entities = SparseSet(Entity).init(.{
+                .allocator = allocator,
+                .capacity = capacity,
+            }),
             .edge = edge,
             .edge2 = edge2,
             .capacity = capacity,

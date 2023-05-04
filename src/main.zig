@@ -27,7 +27,7 @@ pub fn main() !void {
 
     var before = std.time.milliTimestamp();
 
-    while (i < 10_000) : (i += 1) {
+    while (i < 2_000_000) : (i += 1) {
         var ent = world.createEntity();
 
         world.attach(ent, Position);

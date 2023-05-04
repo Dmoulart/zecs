@@ -12,22 +12,23 @@ pub fn SparseSet(comptime T: type) type {
         indices: []T = undefined,
         values: []T = undefined,
         count: T = 0,
-        capacity: u64 = DEFAULT_SPARSE_SET_CAPACITY,
+        capacity: u64,
 
-        pub fn init(allocator: std.mem.Allocator) Self {
+        pub const SparseSetOptions = struct {
+            allocator: std.mem.Allocator,
+            capacity: ?u64,
+        };
+
+        pub fn init(options: SparseSetOptions) Self {
+            var capacity = options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY;
             // holy molly that's crap
-            var indices = allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY) catch null orelse unreachable;
-            errdefer allocator.free(indices);
+            var indices = options.allocator.alloc(T, capacity) catch null orelse unreachable;
+            errdefer options.allocator.free(indices);
 
-            var values = allocator.alloc(T, DEFAULT_SPARSE_SET_CAPACITY) catch null orelse unreachable;
-            errdefer allocator.free(values);
+            var values = options.allocator.alloc(T, capacity) catch null orelse unreachable;
+            errdefer options.allocator.free(values);
 
-            return SparseSet(T){
-                .allocator = allocator,
-                .indices = indices,
-                .values = values,
-                .count = 0,
-            };
+            return SparseSet(T){ .allocator = options.allocator, .indices = indices, .values = values, .count = 0, .capacity = capacity };
         }
 
         pub fn deinit(self: *Self) void {
