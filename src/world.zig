@@ -4,7 +4,6 @@ const assert = @import("std").debug.assert;
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
-const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
@@ -105,7 +104,7 @@ pub const World = struct {
 
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
         var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
-        if (archetype.edge2.get(component.id)) |edge| {
+        if (archetype.edge.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
         } else {
             var new_archetype = self.archetypes.derive(archetype, component.id);
@@ -115,7 +114,7 @@ pub const World = struct {
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
         self.entities.setArchetype(entity, new);
-        // std.debug.print("ent {}", .{entity});
+
         old.entities.remove(entity);
         new.entities.add(entity);
     }

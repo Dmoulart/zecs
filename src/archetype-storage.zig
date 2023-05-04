@@ -3,7 +3,6 @@ const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
-const ArchetypeEdge = @import("./archetype.zig").ArchetypeEdge;
 
 pub const DEFAULT_ARCHETYPE_CAPACITY = 10_000;
 pub const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = 1000;
@@ -52,10 +51,8 @@ pub const ArchetypeStorage = struct {
         var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity) catch unreachable;
         var new_archetype = self.register(&derived);
 
-        // new_archetype.edge.putAssumeCapacity(component_id, archetype);
-        new_archetype.edge2.set(component_id, archetype);
-        // archetype.edge.putAssumeCapacity(component_id, new_archetype);
-        archetype.edge2.set(component_id, new_archetype);
+        new_archetype.edge.set(component_id, archetype);
+        archetype.edge.set(component_id, new_archetype);
 
         return new_archetype;
     }

@@ -11,8 +11,6 @@ pub const ArchetypeMask = std.bit_set.DynamicBitSet;
 
 const ARCHETYPE_EDGE_CAPACITY: u32 = 10_000;
 
-pub const ArchetypeEdge = std.AutoArrayHashMap(ComponentId, *Archetype);
-
 pub const Archetype = struct {
     const Self = @This();
 
@@ -20,23 +18,18 @@ pub const Archetype = struct {
 
     entities: SparseSet(Entity),
 
-    edge: ArchetypeEdge,
-    edge2: SparseMap(ComponentId, *Archetype),
+    edge: SparseMap(ComponentId, *Archetype),
 
     capacity: u32,
 
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
         self.edge.deinit();
-        self.edge2.deinit();
         self.entities.deinit();
     }
 
     pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) !Archetype {
         var mask = try Self.generateComponentsMask(comps, allocator);
-        var edge = ArchetypeEdge.init(allocator);
-        try edge.ensureTotalCapacity(capacity);
-        std.debug.print("capacity {}", .{capacity});
 
         return Archetype{
             .mask = mask,
@@ -44,8 +37,7 @@ pub const Archetype = struct {
                 .allocator = allocator,
                 .capacity = capacity,
             }),
-            .edge = edge,
-            .edge2 = SparseMap(ComponentId, *Archetype).init(.{
+            .edge = SparseMap(ComponentId, *Archetype).init(.{
                 .allocator = allocator,
                 .capacity = capacity,
             }),
@@ -57,14 +49,11 @@ pub const Archetype = struct {
         var mask: ArchetypeMask = try self.mask.clone(allocator);
         mask.toggle(id);
 
-        var edge = ArchetypeEdge.init(allocator);
-        // try edge.ensureTotalCapacity(ARCHETYPE_EDGE_CAPACITY);
-
-        var edge2 = SparseMap(ComponentId, *Archetype).init(.{
+        var edge = SparseMap(ComponentId, *Archetype).init(.{
             .allocator = allocator,
             .capacity = capacity,
         });
-        std.debug.print("capacity {}", .{capacity});
+
         return Archetype{
             .mask = mask,
             .entities = SparseSet(Entity).init(.{
@@ -72,7 +61,6 @@ pub const Archetype = struct {
                 .capacity = capacity,
             }),
             .edge = edge,
-            .edge2 = edge2,
             .capacity = capacity,
         };
     }

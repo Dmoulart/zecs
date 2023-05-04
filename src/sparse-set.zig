@@ -18,7 +18,7 @@ pub fn SparseSet(comptime T: type) type {
         };
 
         pub fn init(options: SparseSetOptions) Self {
-            var capacity = options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY;
+            var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY) + 1;
             // holy molly err handling
             var indices = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(indices);
@@ -26,7 +26,13 @@ pub fn SparseSet(comptime T: type) type {
             var values = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(values);
 
-            return SparseSet(T){ .allocator = options.allocator, .indices = indices, .values = values, .count = 0, .capacity = capacity };
+            return SparseSet(T){
+                .allocator = options.allocator,
+                .indices = indices,
+                .values = values,
+                .count = 0,
+                .capacity = capacity,
+            };
         }
 
         pub fn deinit(self: *Self) void {
@@ -63,8 +69,8 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         fn grow(self: *Self) void {
+            std.debug.print("\nsset alloc", .{});
             var grow_by = self.getGrowFactor();
-            std.debug.print("\n sset alloc", .{});
             self.indices = self.allocator.realloc(self.indices, self.capacity + grow_by) catch unreachable;
             self.values = self.allocator.realloc(self.values, self.capacity + grow_by) catch unreachable;
             self.capacity += grow_by;
