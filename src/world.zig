@@ -25,6 +25,8 @@ pub const World = struct {
 
     queryBuilder: QueryBuilder,
 
+    root: *Archetype,
+
     const WorldOptions = struct {
         allocator: std.mem.Allocator,
         capacity: ?u32 = DEFAULT_WORLD_CAPACITY,
@@ -44,12 +46,14 @@ pub const World = struct {
             .allocator = options.allocator,
             .capacity = capacity,
         });
+        entities.fillStack();
 
         var world = Self{
             .allocator = options.allocator,
             .archetypes = archetypes,
             .entities = entities,
             .queryBuilder = undefined,
+            .root = archetypes.getRoot(),
         };
 
         var queryBuilder = try QueryBuilder.init(options.allocator);
@@ -63,6 +67,10 @@ pub const World = struct {
         self.archetypes.deinit();
         self.entities.deinit();
         self.queryBuilder.deinit();
+    }
+
+    pub fn popEntity(self: *Self) Entity {
+        return self.entities.pop(self.root);
     }
 
     pub fn createEntity(self: *Self) Entity {

@@ -21,6 +21,8 @@ pub const EntityStorage = struct {
 
     capacity: u32,
 
+    stack: std.ArrayList(Entity),
+
     count: u32 = 0,
 
     const EntityStorageOptions = struct {
@@ -34,6 +36,9 @@ pub const EntityStorage = struct {
         var deletedEntities = std.ArrayList(Entity).init(options.allocator);
         try deletedEntities.ensureTotalCapacity(capacity);
 
+        var stack = std.ArrayList(Entity).init(options.allocator);
+        try stack.ensureTotalCapacity(capacity);
+
         return Self{
             .allocator = options.allocator,
             .capacity = capacity,
@@ -42,6 +47,7 @@ pub const EntityStorage = struct {
                 .capacity = capacity,
             }),
             .deleted = deletedEntities,
+            .stack = stack,
         };
     }
 
@@ -50,6 +56,26 @@ pub const EntityStorage = struct {
         self.deleted.deinit();
         // where should we put this?
         global_entity_counter = 0;
+    }
+
+    pub fn fillStack(self: *Self) void {
+        var entity: Entity = 0;
+
+        while (entity < self.capacity) : (entity += 1) {
+            self.stack.appendAssumeCapacity(entity);
+        }
+    }
+
+    pub fn pop(self: *Self, archetype: *Archetype) Entity {
+        var entity: Entity = self.stack.pop();
+
+        archetype.entities.add(entity);
+
+        self.all.set(entity, archetype);
+
+        self.count += 1;
+
+        return entity;
     }
 
     pub fn create(self: *Self, archetype: *Archetype) Entity {
