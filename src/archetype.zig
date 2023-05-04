@@ -36,6 +36,7 @@ pub const Archetype = struct {
         var mask = try Self.generateComponentsMask(comps, allocator);
         var edge = ArchetypeEdge.init(allocator);
         try edge.ensureTotalCapacity(capacity);
+        std.debug.print("capacity {}", .{capacity});
 
         return Archetype{
             .mask = mask,
@@ -63,7 +64,7 @@ pub const Archetype = struct {
             .allocator = allocator,
             .capacity = capacity,
         });
-
+        std.debug.print("capacity {}", .{capacity});
         return Archetype{
             .mask = mask,
             .entities = SparseSet(Entity).init(.{

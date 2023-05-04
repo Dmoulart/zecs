@@ -115,7 +115,7 @@ pub const World = struct {
 
     fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
         self.entities.setArchetype(entity, new);
-
+        // std.debug.print("ent {}", .{entity});
         old.entities.remove(entity);
         new.entities.add(entity);
     }

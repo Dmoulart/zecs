@@ -1,9 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 
-const DEFAULT_SPARSE_SET_CAPACITY: u64 = 100_000;
-
-const CAPACITY_GROW_FACTOR: u32 = DEFAULT_SPARSE_SET_CAPACITY;
+const DEFAULT_SPARSE_SET_CAPACITY: u64 = 10_000;
 
 pub fn SparseSet(comptime T: type) type {
     return struct {
@@ -21,11 +19,11 @@ pub fn SparseSet(comptime T: type) type {
 
         pub fn init(options: SparseSetOptions) Self {
             var capacity = options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY;
-            // holy molly that's crap
-            var indices = options.allocator.alloc(T, capacity) catch null orelse unreachable;
+            // holy molly err handling
+            var indices = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(indices);
 
-            var values = options.allocator.alloc(T, capacity) catch null orelse unreachable;
+            var values = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(values);
 
             return SparseSet(T){ .allocator = options.allocator, .indices = indices, .values = values, .count = 0, .capacity = capacity };
@@ -65,9 +63,15 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         fn grow(self: *Self) void {
-            self.indices = self.allocator.realloc(self.indices, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
-            self.values = self.allocator.realloc(self.values, self.capacity + CAPACITY_GROW_FACTOR) catch unreachable;
-            self.capacity += CAPACITY_GROW_FACTOR;
+            var grow_by = self.getGrowFactor();
+            std.debug.print("\n sset alloc", .{});
+            self.indices = self.allocator.realloc(self.indices, self.capacity + grow_by) catch unreachable;
+            self.values = self.allocator.realloc(self.values, self.capacity + grow_by) catch unreachable;
+            self.capacity += grow_by;
+        }
+
+        fn getGrowFactor(self: *Self) u64 {
+            return self.capacity * 2;
         }
     };
 }
