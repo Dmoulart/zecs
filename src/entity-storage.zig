@@ -1,6 +1,7 @@
 const std = @import("std");
 const Archetype = @import("./archetype.zig").Archetype;
 const SparseMap = @import("./sparse-map.zig").SparseMap;
+const SparseArray = @import("./sparse-array.zig").SparseArray;
 const assert = @import("std").debug.assert;
 
 pub const DEFAULT_ENTITIES_STORAGE_CAPACITY = 10_000;
@@ -14,7 +15,7 @@ pub const EntityStorage = struct {
 
     allocator: std.mem.Allocator,
 
-    all: SparseMap(Entity, *Archetype),
+    all: SparseArray(Entity, *Archetype),
 
     deleted: std.ArrayList(Entity),
 
@@ -36,7 +37,7 @@ pub const EntityStorage = struct {
         return Self{
             .allocator = options.allocator,
             .capacity = capacity,
-            .all = SparseMap(Entity, *Archetype).init(.{
+            .all = SparseArray(Entity, *Archetype).init(.{
                 .allocator = options.allocator,
                 .capacity = capacity,
             }),

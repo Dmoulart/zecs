@@ -69,11 +69,10 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         fn grow(self: *Self) void {
-            std.debug.print("\nsset alloc", .{});
-            var grow_by = self.getGrowFactor();
-            self.indices = self.allocator.realloc(self.indices, self.capacity + grow_by) catch unreachable;
-            self.values = self.allocator.realloc(self.values, self.capacity + grow_by) catch unreachable;
-            self.capacity += grow_by;
+            self.capacity = self.getGrowFactor();
+
+            self.indices = self.allocator.realloc(self.indices, self.capacity) catch unreachable;
+            self.values = self.allocator.realloc(self.values, self.capacity) catch unreachable;
         }
 
         fn getGrowFactor(self: *Self) u64 {

@@ -20,14 +20,14 @@ pub fn main() !void {
     const Position = defineComponent(Vector);
     const Velocity = defineComponent(Vector);
 
-    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 16_000 });
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 280_000 });
     defer world.deinit();
 
     var i: u32 = 0;
 
     var before = std.time.milliTimestamp();
 
-    while (i < 16_000) : (i += 1) {
+    while (i < 262_000) : (i += 1) {
         var ent = world.createEntity();
 
         world.attach(ent, Position);

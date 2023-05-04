@@ -2,7 +2,7 @@ const std = @import("std");
 const expect = std.testing.expect;
 const assert = std.debug.assert;
 
-const DEFAULT_SPARSE_MAP_CAPACITY: u64 = 100_000;
+const DEFAULT_SPARSE_MAP_CAPACITY: u64 = 10_000;
 
 pub fn SparseMap(comptime K: type, comptime V: type) type {
     return struct {
@@ -91,14 +91,11 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
         }
 
         fn grow(self: *Self) void {
-            std.debug.print("smap alloc", .{});
-            var grow_by = self.getGrowFactor();
+            self.capacity = self.getGrowFactor();
 
-            self.indices = self.allocator.realloc(self.indices, self.capacity + grow_by) catch unreachable;
-            self.values = self.allocator.realloc(self.values, self.capacity + grow_by) catch unreachable;
-            self.keys = self.allocator.realloc(self.keys, self.capacity + grow_by) catch unreachable;
-
-            self.capacity += grow_by;
+            self.indices = self.allocator.realloc(self.indices, self.capacity) catch unreachable;
+            self.values = self.allocator.realloc(self.values, self.capacity) catch unreachable;
+            self.keys = self.allocator.realloc(self.keys, self.capacity) catch unreachable;
         }
 
         fn getGrowFactor(self: *Self) u64 {
