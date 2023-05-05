@@ -50,7 +50,7 @@ pub fn main() !void {
         const Position = defineComponent(Vector);
         const Velocity = defineComponent(Vector);
 
-        const n: u32 = 262_000;
+        const n: u32 = 100_000;
         var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
         defer world.deinit();
 
@@ -85,7 +85,7 @@ pub fn main() !void {
         const Position = defineComponent(Vector);
         const Velocity = defineComponent(Vector);
 
-        const n: u32 = 16_000;
+        const n: u32 = 100_000;
         var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
         defer world.deinit();
 
@@ -112,34 +112,34 @@ pub fn main() !void {
         var query = world.query().any(.{Position}).execute();
         defer query.deinit();
     }
-    {
-        var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        defer arena.deinit();
+    // {
+    //     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    //     defer arena.deinit();
 
-        const Position = defineComponent(Vector);
-        const Velocity = defineComponent(Vector);
-        var n: u32 = 36_000;
-        var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
-        defer world.deinit();
+    //     const Position = defineComponent(Vector);
+    //     const Velocity = defineComponent(Vector);
+    //     var n: u32 = 36_000;
+    //     var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    //     defer world.deinit();
 
-        var i: u32 = 0;
+    //     var i: u32 = 0;
 
-        std.debug.print("\nCreate {} Entity", .{n});
-        var before = std.time.milliTimestamp();
+    //     std.debug.print("\nCreate {} Entity", .{n});
+    //     var before = std.time.milliTimestamp();
 
-        while (i < n) : (i += 1) {
-            var ent = world.createEntity();
+    //     while (i < n) : (i += 1) {
+    //         var ent = world.createEntity();
 
-            world.attach(ent, &Position);
-            world.attach(ent, &Velocity);
-        }
+    //         world.attach(ent, &Position);
+    //         world.attach(ent, &Velocity);
+    //     }
 
-        var now = std.time.milliTimestamp();
-        std.debug.print("\n{}ms", .{now - before});
+    //     var now = std.time.milliTimestamp();
+    //     std.debug.print("\n{}ms", .{now - before});
 
-        var query = world.query().any(.{Position}).execute();
-        defer query.deinit();
-    }
+    //     var query = world.query().any(.{Position}).execute();
+    //     defer query.deinit();
+    // }
 }
 
 test "Can create Entity" {
