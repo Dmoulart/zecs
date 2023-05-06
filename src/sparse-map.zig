@@ -7,11 +7,17 @@ const DEFAULT_SPARSE_MAP_CAPACITY: u64 = 10_000;
 pub fn SparseMap(comptime K: type, comptime V: type) type {
     return struct {
         const Self = @This();
+
         allocator: std.mem.Allocator,
+
         indices: []K = undefined,
+
         keys: []K = undefined,
+
         values: []V = undefined,
+
         count: K = 0,
+
         capacity: u64,
 
         pub const SparseMapOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };

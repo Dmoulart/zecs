@@ -6,10 +6,15 @@ const DEFAULT_SPARSE_SET_CAPACITY: u64 = 10_000;
 pub fn SparseSet(comptime T: type) type {
     return struct {
         const Self = @This();
+
         allocator: std.mem.Allocator,
+
         indices: []T = undefined,
+
         values: []T = undefined,
+
         count: T = 0,
+
         capacity: u64,
 
         pub const SparseSetOptions = struct {

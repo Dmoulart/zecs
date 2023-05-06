@@ -7,7 +7,9 @@ const DEFAULT_SPARSE_ARRAY_CAPACITY: u64 = 10_000;
 pub fn SparseArray(comptime I: type, comptime V: type) type {
     return struct {
         const Self = @This();
+
         allocator: std.mem.Allocator,
+
         values: []?V = undefined,
 
         pub const SparseMapOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };
