@@ -4,13 +4,16 @@ const ComponentId = @import("./component.zig").ComponentId;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const SparseMap = @import("./sparse-map.zig").SparseMap;
 const SparseArray = @import("./sparse-array.zig").SparseArray;
+const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const Entity = @import("./entity-storage.zig").Entity;
 
 const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
 
-pub const ArchetypeMask = std.bit_set.DynamicBitSet;
+pub const ArchetypeMask = RawBitset;
 
 const ARCHETYPE_EDGE_CAPACITY: u32 = 10_000;
+
+const ARCHETYPE_BITSET_CAPACITY: u32 = 50;
 
 pub const Archetype = struct {
     const Self = @This();
@@ -29,8 +32,8 @@ pub const Archetype = struct {
         self.entities.deinit();
     }
 
-    pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) !Archetype {
-        var mask = try Self.generateComponentsMask(comps, allocator);
+    pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) Archetype {
+        var mask = generateComponentsMask(comps, allocator);
 
         return Archetype{
             .mask = mask,
@@ -46,9 +49,13 @@ pub const Archetype = struct {
         };
     }
 
-    pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) !Archetype {
-        var mask: ArchetypeMask = try self.mask.clone(allocator);
-        mask.toggle(id);
+    pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) Archetype {
+        var mask: ArchetypeMask = self.mask.clone();
+        if (mask.has(id)) {
+            mask.unset(id);
+        } else {
+            mask.set(id);
+        }
 
         return Archetype{
             .mask = mask,
@@ -65,22 +72,23 @@ pub const Archetype = struct {
     }
 
     pub fn has(self: *Self, id: ComponentId) bool {
-        return self.mask.isSet(id);
-    }
-
-    fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) !std.bit_set.DynamicBitSet {
-        const fields = std.meta.fields(@TypeOf(comps));
-
-        var mask: std.bit_set.DynamicBitSet = try std.bit_set.DynamicBitSet.initEmpty(alloc, 500);
-
-        inline for (fields) |field| {
-            var comp = @field(comps, field.name);
-            mask.set(@as(usize, comp.id));
-        }
-
-        return mask;
+        return self.mask.has(id);
     }
 };
+
+fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) RawBitset {
+    _ = alloc;
+    const fields = std.meta.fields(@TypeOf(comps));
+
+    var mask: RawBitset = RawBitset.init(.{ .size = 20 });
+
+    inline for (fields) |field| {
+        var comp = @field(comps, field.name);
+        mask.set(@as(usize, comp.id));
+    }
+
+    return mask;
+}
 
 // const HASH_BASE: ArchetypeMask = 133562;
 // const HASH_ENTROPY: ArchetypeMask = 423052;

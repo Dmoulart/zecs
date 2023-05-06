@@ -3,6 +3,7 @@ const print = @import("std").debug.print;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
 const Entity = @import("./entity-storage.zig").Entity;
+const RawBitset = @import("./raw-bitset.zig").RawBitset;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
@@ -63,17 +64,17 @@ pub const Query = struct {
 pub const QueryMatcher = struct {
     const Self = @This();
     op_type: QueryMatcherType,
-    mask: std.bit_set.DynamicBitSet,
+    mask: RawBitset,
 
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
     }
-    pub fn match(self: *Self, bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+    pub fn match(self: *Self, bitset: *RawBitset, other: *RawBitset) bool {
         return switch (self.op_type) {
-            .any => intersects(bitset, other),
-            .all => contains(bitset, other),
-            .not => !intersects(bitset, other),
-            .none => !contains(bitset, other),
+            .any => bitset.intersects(other),
+            .all => bitset.contains(other),
+            .not => !bitset.intersects(other),
+            .none => !bitset.contains(other),
         };
     }
 };
@@ -126,7 +127,7 @@ pub const QueryBuilder = struct {
     fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
         const components = std.meta.fields(@TypeOf(data));
 
-        var mask = std.bit_set.DynamicBitSet.initEmpty(self.allocator, MAX_COMPONENTS_PER_QUERY_MATCHER) catch unreachable;
+        var mask = RawBitset.init(.{ .size = 30 });
 
         inline for (components) |field| {
             var component = @field(data, field.name);

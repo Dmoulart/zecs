@@ -10,6 +10,7 @@ const Entity = @import("./world.zig").Entity;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
+const RawBitset = @import("./raw-bitset.zig").RawBitset;
 
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
@@ -134,10 +135,10 @@ test "Can generate archetype" {
     var ent = world.createEntity();
 
     world.attach(ent, Position);
-    var mask: std.bit_set.DynamicBitSet = world.archetypes.all.items[1].mask;
+    var mask: RawBitset = world.archetypes.all.items[1].mask;
 
-    try expect(mask.isSet(Position.id));
-    try expect(!mask.isSet(Velocity.id));
+    try expect(mask.has(Position.id));
+    try expect(!mask.has(Velocity.id));
 }
 
 test "Query can target argetype" {
