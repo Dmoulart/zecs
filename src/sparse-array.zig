@@ -47,11 +47,13 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
             return self.values[index] != null;
         }
 
-        pub fn getUnsafe(self: *Self, index: I) ?V {
-            return self.values[index];
+        pub fn getUnsafe(self: *Self, index: I) V {
+            return self.values[index] orelse unreachable;
         }
 
         pub fn get(self: *Self, index: I) ?V {
+            if (index >= self.values.len) return null;
+
             return self.values[index];
         }
 
