@@ -3,6 +3,7 @@ const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const SparseMap = @import("./sparse-map.zig").SparseMap;
+const SparseArray = @import("./sparse-array.zig").SparseArray;
 const Entity = @import("./entity-storage.zig").Entity;
 
 const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
@@ -18,7 +19,7 @@ pub const Archetype = struct {
 
     entities: SparseSet(Entity),
 
-    edge: SparseMap(ComponentId, *Archetype),
+    edge: SparseArray(ComponentId, *Archetype),
 
     capacity: u32,
 
@@ -37,7 +38,7 @@ pub const Archetype = struct {
                 .allocator = allocator,
                 .capacity = capacity,
             }),
-            .edge = SparseMap(ComponentId, *Archetype).init(.{
+            .edge = SparseArray(ComponentId, *Archetype).init(.{
                 .allocator = allocator,
                 .capacity = capacity,
             }),
@@ -49,7 +50,7 @@ pub const Archetype = struct {
         var mask: ArchetypeMask = try self.mask.clone(allocator);
         mask.toggle(id);
 
-        var edge = SparseMap(ComponentId, *Archetype).init(.{
+        var edge = SparseArray(ComponentId, *Archetype).init(.{
             .allocator = allocator,
             .capacity = capacity,
         });

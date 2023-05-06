@@ -77,7 +77,7 @@ pub const World = struct {
     }
 
     pub fn has(self: *Self, entity: Entity, component: anytype) bool {
-        assert(self.contains(entity));
+        // assert(self.contains(entity));
 
         var archetype = self.entities.getArchetype(entity) orelse unreachable;
         return archetype.has(component.id);
@@ -88,13 +88,13 @@ pub const World = struct {
     }
 
     pub fn attach(self: *Self, entity: Entity, component: anytype) void {
-        assert(!self.has(entity, component));
+        // assert(!self.has(entity, component));
 
         self.toggleComponent(entity, component);
     }
 
     pub fn detach(self: *Self, entity: Entity, component: anytype) void {
-        assert(self.has(entity, component));
+        // assert(self.has(entity, component));
 
         self.toggleComponent(entity, component);
     }

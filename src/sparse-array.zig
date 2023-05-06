@@ -12,9 +12,9 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
 
         values: []?V = undefined,
 
-        pub const SparseMapOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };
+        pub const SparseArrayOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };
 
-        pub fn init(options: SparseMapOptions) Self {
+        pub fn init(options: SparseArrayOptions) Self {
             const allocator = options.allocator;
             const capacity = (options.capacity orelse DEFAULT_SPARSE_ARRAY_CAPACITY) + 1;
             // err handling anyone ?
