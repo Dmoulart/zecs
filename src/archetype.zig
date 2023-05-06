@@ -50,18 +50,16 @@ pub const Archetype = struct {
         var mask: ArchetypeMask = try self.mask.clone(allocator);
         mask.toggle(id);
 
-        var edge = SparseArray(ComponentId, *Archetype).init(.{
-            .allocator = allocator,
-            .capacity = capacity,
-        });
-
         return Archetype{
             .mask = mask,
             .entities = SparseSet(Entity).init(.{
                 .allocator = allocator,
                 .capacity = capacity,
             }),
-            .edge = edge,
+            .edge = SparseArray(ComponentId, *Archetype).init(.{
+                .allocator = allocator,
+                .capacity = capacity,
+            }),
             .capacity = capacity,
         };
     }
