@@ -50,7 +50,7 @@ pub fn main() !void {
         const Position = defineComponent(Vector);
         const Velocity = defineComponent(Vector);
 
-        const n: u32 = 100_000;
+        const n: u32 = 262_000;
         var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
         defer world.deinit();
 

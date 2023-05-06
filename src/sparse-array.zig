@@ -9,7 +9,6 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
         const Self = @This();
         allocator: std.mem.Allocator,
         values: []?V = undefined,
-        capacity: u64,
 
         pub const SparseMapOptions = struct { allocator: std.mem.Allocator, capacity: ?u64 };
 
@@ -26,7 +25,6 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
             return SparseArray(I, V){
                 .allocator = allocator,
                 .values = values,
-                .capacity = capacity,
             };
         }
 
@@ -47,8 +45,11 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
             return self.values[index] != null;
         }
 
+        pub fn getUnsafe(self: *Self, index: I) ?V {
+            return self.values[index];
+        }
+
         pub fn get(self: *Self, index: I) ?V {
-            if (index >= self.values.len) return null;
             return self.values[index];
         }
 
@@ -58,9 +59,12 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
             self.values[index] = null;
         }
 
+        pub fn deleteUnsafe(self: *Self, index: I) void {
+            self.values[index] = null;
+        }
+
         fn grow(self: *Self) void {
             self.values = self.allocator.realloc(self.values, self.getGrowFactor()) catch unreachable;
-            self.capacity = self.values.len;
         }
 
         fn getGrowFactor(self: *Self) u64 {

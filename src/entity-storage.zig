@@ -78,10 +78,10 @@ pub const EntityStorage = struct {
     pub fn delete(self: *Self, entity: Entity) void {
         assert(self.contains(entity));
 
-        var archetype = self.all.get(entity) orelse unreachable;
+        var archetype = self.all.getUnsafe(entity) orelse unreachable;
 
-        archetype.entities.remove(entity);
-        _ = self.all.delete(entity);
+        archetype.entities.removeUnsafe(entity);
+        _ = self.all.deleteUnsafe(entity);
 
         self.deleted.appendAssumeCapacity(entity);
 

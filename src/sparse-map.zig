@@ -71,8 +71,12 @@ pub fn SparseMap(comptime K: type, comptime V: type) type {
 
         pub fn get(self: *Self, key: K) ?V {
             var index = self.indices[key];
-            // assert(index < self.count);
+
             return if (index < self.count) self.values[index] else null;
+        }
+
+        pub fn getUnsafe(self: *Self, key: K) V {
+            return self.values[self.indices[key]];
         }
 
         pub fn delete(self: *Self, key: K) void {
