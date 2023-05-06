@@ -110,13 +110,13 @@ pub const World = struct {
         if (archetype.edge.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
         } else {
-            var before = std.time.milliTimestamp();
+            // var before = std.time.milliTimestamp();
 
             var new_archetype = self.archetypes.derive(archetype, component.id);
-            
-            var now = std.time.milliTimestamp();
-            std.debug.print("\n", .{});
-            std.debug.print("\nDERIVE Results : {}ms", .{now - before});
+
+            // var now = std.time.milliTimestamp();
+            // std.debug.print("\n", .{});
+            // std.debug.print("\nDERIVE Results : {}ms", .{now - before});
             self.swapArchetypes(entity, archetype, new_archetype);
         }
     }
