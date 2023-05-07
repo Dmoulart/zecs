@@ -154,12 +154,13 @@ pub fn World(comptime ComponentsTypes: anytype) type {
         //     return &self.queryBuilder;
         // }
 
-        pub fn Prefab(comptime definition: anytype) fn (*World(ComponentsTypes)) Entity {
+        pub fn prefab(comptime definition: anytype) fn (*World(ComponentsTypes)) Entity {
+            const definition_fields = std.meta.fields(@TypeOf(definition));
             return (struct {
                 pub fn create(world: *World(ComponentsTypes)) Entity {
                     var entity = world.createEntity();
 
-                    inline for (std.meta.fields(@TypeOf(definition))) |field| {
+                    inline for (definition_fields) |field| {
                         const ComponentType = @field(definition, field.name);
                         const component = @field(components, ComponentType.name);
                         world.toggleComponent(entity, component);
@@ -207,33 +208,35 @@ test "Create World type with comptime components" {
 }
 
 test "Create Prefab Function" {
-    const Game = World(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+    const Rotation = Component("Rotation", struct {
+        degrees: i8,
     });
 
-    const actor = Game.Prefab(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
+    const Game = World(.{
+        Position,
+        Velocity,
+        Rotation,
+    });
+
+    const actor = Game.prefab(.{
+        Position,
+        Velocity,
     });
 
     var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
     defer game.deinit();
-    
+
     var ent = actor(&game);
     try expect(ent == 1);
     try expect(game.has(ent, Game.components.Position));
     try expect(game.has(ent, Game.components.Velocity));
+    try expect(!game.has(ent, Game.components.Rotation));
 }
