@@ -79,74 +79,76 @@ pub const QueryMatcher = struct {
     }
 };
 
-pub const QueryBuilder = struct {
-    const Self = @This();
+pub fn QueryBuilder(comptime world: anytype) type {
+    return struct {
+        const Self = @This();
 
-    allocator: std.mem.Allocator,
+        allocator: std.mem.Allocator,
 
-    matchers: std.ArrayList(QueryMatcher),
+        matchers: std.ArrayList(QueryMatcher),
 
-    world: *World,
+        world: @TypeOf(world),
 
-    pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-        return QueryBuilder{
-            .allocator = allocator,
-            .matchers = std.ArrayList(QueryMatcher).init(allocator),
-            .world = undefined,
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.matchers.deinit();
-    }
-
-    pub fn any(self: *Self, data: anytype) *Self {
-        self.createMatcher(data, .any);
-        return self;
-    }
-
-    pub fn all(self: *Self, data: anytype) *Self {
-        self.createMatcher(data, .all);
-        return self;
-    }
-    //
-    // Select the archetypes which does not posess at least one of the components.
-    //
-    pub fn not(self: *Self, data: anytype) *Self {
-        self.createMatcher(data, .not);
-        return self;
-    }
-    //
-    // Select the archetypes which does not posess the entire set of component.
-    //
-    pub fn none(self: *Self, data: anytype) *Self {
-        self.createMatcher(data, .none);
-        return self;
-    }
-
-    fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
-        const components = std.meta.fields(@TypeOf(data));
-
-        var mask = RawBitset.init(.{});
-
-        inline for (components) |field| {
-            var component = @field(data, field.name);
-            mask.set(component.id);
+        pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
+            return QueryBuilder{
+                .allocator = allocator,
+                .matchers = std.ArrayList(QueryMatcher).init(allocator),
+                .world = undefined,
+            };
         }
 
-        self.matchers.append(QueryMatcher{ .op_type = matcher_type, .mask = mask }) catch unreachable;
-    }
+        pub fn deinit(self: *Self) void {
+            self.matchers.deinit();
+        }
 
-    pub fn execute(self: *Self) Query {
-        var created_query = Query.init(self.matchers.clone() catch unreachable, self.allocator);
+        pub fn any(self: *Self, data: anytype) *Self {
+            self.createMatcher(data, .any);
+            return self;
+        }
 
-        self.matchers.clearAndFree();
+        pub fn all(self: *Self, data: anytype) *Self {
+            self.createMatcher(data, .all);
+            return self;
+        }
+        //
+        // Select the archetypes which does not posess at least one of the components.
+        //
+        pub fn not(self: *Self, data: anytype) *Self {
+            self.createMatcher(data, .not);
+            return self;
+        }
+        //
+        // Select the archetypes which does not posess the entire set of component.
+        //
+        pub fn none(self: *Self, data: anytype) *Self {
+            self.createMatcher(data, .none);
+            return self;
+        }
 
-        created_query.execute(self.world);
+        fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
+            const components = std.meta.fields(@TypeOf(data));
 
-        return created_query;
-    }
-};
+            var mask = RawBitset.init(.{});
+
+            inline for (components) |field| {
+                var component = @field(data, field.name);
+                mask.set(component.id);
+            }
+
+            self.matchers.append(QueryMatcher{ .op_type = matcher_type, .mask = mask }) catch unreachable;
+        }
+
+        pub fn execute(self: *Self) Query {
+            var created_query = Query.init(self.matchers.clone() catch unreachable, self.allocator);
+
+            self.matchers.clearAndFree();
+
+            created_query.execute(self.world);
+
+            return created_query;
+        }
+    };
+}
 
 pub const QueryIterator = struct {
     const Self = @This();

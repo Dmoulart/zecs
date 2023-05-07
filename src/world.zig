@@ -1,5 +1,6 @@
 const std = @import("std");
 const assert = @import("std").debug.assert;
+const expect = @import("std").testing.expect;
 
 const Component = @import("./component.zig").Component;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
@@ -212,11 +213,22 @@ pub fn World(comptime ComponentsTypes: anytype) type {
     };
 }
 
-test "Instantiate world"{
-    Component(struct {
-        x: f32,
-        y: f32,
+test "Instantiate world" {
+    const Game = World(.{
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
     });
-    
+
+    var game = Game.init(.{
+        .allocator = std.testing.allocator,
+        .capacity = 100,
+    });
+    try expect(game.components.Position.id == 1);
 }
 // pub const World =
