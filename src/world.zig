@@ -121,6 +121,13 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             return self.entities.create(self.archetypes.getRoot());
         }
 
+        pub fn create(self: *Self, entity_type: anytype) Entity {
+            if (!entity_type.ready) {
+                entity_type.precalcArchetype(self);
+            }
+            return self.entities.create(entity_type.type_archetype orelse unreachable);
+        }
+
         pub fn deleteEntity(self: *Self, entity: Entity) void {
             self.entities.delete(entity);
         }
@@ -156,15 +163,15 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             return comptime @field(components, component.name);
         }
 
-        pub fn Prefab(comptime definition: anytype) type {
+        pub fn Type(comptime definition: anytype) type {
             const definition_fields = comptime std.meta.fields(@TypeOf(definition));
 
             return struct {
-                prefab_archetype: ?*Archetype = null,
+                type_archetype: ?*Archetype = null,
 
                 ready: bool = false,
 
-                fn precalcArchetype(self: *@This(), world: *World(ComponentsTypes)) void {
+                fn precalcArchetype(self: *@This(), world: *Self) void {
                     var archetype = world.archetypes.getRoot();
 
                     inline for (definition_fields) |*field| {
@@ -178,15 +185,14 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                         }
                     }
 
-                    self.prefab_archetype = archetype;
+                    self.type_archetype = archetype;
                     self.ready = true;
-                    std.debug.print("ready {}", .{self.ready});
                 }
 
-                pub fn create(self: *@This(), world: *World(ComponentsTypes)) Entity {
+                fn create(self: *@This(), world: *Self) Entity {
                     if (!self.ready) self.precalcArchetype(world);
 
-                    const entity = world.entities.create(self.prefab_archetype orelse unreachable);
+                    const entity = world.entities.create(self.type_archetype orelse unreachable);
 
                     return entity;
                 }
@@ -229,41 +235,6 @@ test "Create World type with comptime components" {
     try expect(Game.components.Velocity.id == 2);
 }
 
-test "Create Prefab Function" {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Rotation = Component("Rotation", struct {
-        degrees: i8,
-    });
-
-    const Game = World(.{
-        Position,
-        Velocity,
-        Rotation,
-    });
-
-    const actor = Game.prefab(.{
-        Position,
-        Velocity,
-    });
-
-    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
-    defer game.deinit();
-
-    var ent = actor(&game);
-
-    try expect(ent == 1);
-    try expect(game.has(ent, Position));
-    try expect(game.has(ent, Velocity));
-    try expect(!game.has(ent, Rotation));
-}
-
 test "Create attach and detach components" {
     const Position = Component("Position", struct {
         x: f32,
@@ -301,5 +272,40 @@ test "Create attach and detach components" {
 
     game.detach(ent, Rotation);
     try expect(!game.has(ent, Position));
+    try expect(!game.has(ent, Rotation));
+}
+
+test "Create type" {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+    const Rotation = Component("Rotation", struct {
+        degrees: i8,
+    });
+
+    const Game = World(.{
+        Position,
+        Velocity,
+        Rotation,
+    });
+
+    var actor = Game.Type(.{
+        Position,
+        Velocity,
+    }){};
+
+    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    defer game.deinit();
+
+    const ent = game.create(&actor);
+
+    try expect(ent == 1);
+    try expect(game.has(ent, Position));
+    try expect(game.has(ent, Velocity));
     try expect(!game.has(ent, Rotation));
 }
