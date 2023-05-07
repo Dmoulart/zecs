@@ -5,7 +5,7 @@ const RAW_BITSET_CAPACITY: RawBitset.Type = 40;
 const RAW_BITSET_WIDTH: RawBitset.Type = 64;
 
 //
-// Todo : rename size and count, add capacity in options, (make this comptime ?)
+// Todo : rename size and count, add capacity in options, (make this comptime ?) Rename this fixed bitset ?
 //
 pub const RawBitset = struct {
     const Self = @This();

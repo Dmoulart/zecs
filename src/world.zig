@@ -14,6 +14,11 @@ const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
+pub fn Prefab(comptime components: anytype) type{
+    _ = components;
+    
+}
+
 pub const World = struct {
     const Self = @This();
 
