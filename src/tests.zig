@@ -68,6 +68,22 @@ test "Can recycle Entity" {
     var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    const actor = world.Prefab(.{ Position, Velocity });
+
+    try expect(world.has(actor, Position));
+    try expect(world.has(actor, Velocity));
+}
+
+test "Can create prefabs" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
+    defer world.deinit();
+
     var ent = world.createEntity();
     world.deleteEntity(ent);
 

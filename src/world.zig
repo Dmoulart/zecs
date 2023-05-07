@@ -14,9 +14,48 @@ const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
-pub fn Prefab(comptime components: anytype) type{
-    _ = components;
-    
+pub fn Prefab(comptime definition: anytype, comptime world: World) type {
+    const components = std.meta.fields(@TypeOf(definition));
+    return struct {
+        pub fn create() Entity {
+            var entity = world.createEntity();
+            inline for (components) |field| {
+                var component = @field(definition, field.name);
+                world.toggleComponent(entity, component);
+            }
+            return entity;
+        }
+    };
+    // const WorldComponents = comptime blk: {
+    //     var fields: []const StructField = &[0]StructField{};
+    //     const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
+    //     var component_counter: u32 = 0;
+
+    //     inline for (ComponentsTypesFields) |field| {
+    //         component_counter += 1;
+    //         var ComponentType = @field(ComponentsTypes, field.name);
+
+    //         var component_instance = ComponentType{
+    //             .id = component_counter,
+    //         };
+
+    //         fields = fields ++ [_]std.builtin.Type.StructField{.{
+    //             .name = ComponentType.name[0..],
+    //             .field_type = ComponentType,
+    //             .is_comptime = true,
+    //             .alignment = @alignOf(ComponentType),
+    //             .default_value = &component_instance,
+    //         }};
+    //     }
+    //     break :blk @Type(.{
+    //         .Struct = .{
+    //             .layout = .Auto,
+    //             .is_tuple = false,
+    //             .fields = fields,
+    //             .decls = &[_]std.builtin.Type.Declaration{},
+    //         },
+    //     });
+    // };
 }
 
 pub const World = struct {
@@ -110,18 +149,22 @@ pub const World = struct {
         return &self.queryBuilder;
     }
 
+    pub fn Prefab(self: *Self, comptime definition: anytype) Entity {
+        var entity = self.createEntity();
+        for (std.meta.fields(@TypeOf(definition))) |field| {
+            var component = @field(definition, field.name);
+            self.toggleComponent(entity, component);
+        }
+        return entity;
+    }
+
     fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
         var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
         if (archetype.edge.get(component.id)) |edge| {
             self.swapArchetypes(entity, archetype, edge);
         } else {
-            // var before = std.time.milliTimestamp();
-
             var new_archetype = self.archetypes.derive(archetype, component.id);
 
-            // var now = std.time.milliTimestamp();
-            // std.debug.print("\n", .{});
-            // std.debug.print("\nDERIVE Results : {}ms", .{now - before});
             self.swapArchetypes(entity, archetype, new_archetype);
         }
     }
