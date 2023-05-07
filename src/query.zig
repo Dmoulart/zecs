@@ -72,9 +72,9 @@ pub const QueryMatcher = struct {
     pub fn match(self: *Self, bitset: *RawBitset, other: *RawBitset) bool {
         return switch (self.op_type) {
             .any => bitset.intersects(other),
-            .all => bitset.contains(other),
+            .all => other.contains(bitset),
             .not => !bitset.intersects(other),
-            .none => !bitset.contains(other),
+            .none => !other.contains(bitset),
         };
     }
 };
@@ -127,7 +127,7 @@ pub const QueryBuilder = struct {
     fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
         const components = std.meta.fields(@TypeOf(data));
 
-        var mask = RawBitset.init(.{ .size = 30 });
+        var mask = RawBitset.init(.{});
 
         inline for (components) |field| {
             var component = @field(data, field.name);
@@ -180,30 +180,30 @@ pub const QueryIterator = struct {
     }
 };
 
-fn numMasks(bit_length: usize) usize {
-    return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
-}
+// fn numMasks(bit_length: usize) usize {
+//     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
+// }
 
-fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-    const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
+// fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+//     const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
 
-    for (bitset.unmanaged.masks[0..len]) |*mask, i| {
-        if (mask.* & other.unmanaged.masks[i] != mask.*) {
-            return false;
-        }
-    }
+//     for (bitset.unmanaged.masks[0..len], 0..) |*mask, i| {
+//         if (mask.* & other.unmanaged.masks[i] != mask.*) {
+//             return false;
+//         }
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
-fn intersects(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-    const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
+// fn intersects(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
+//     const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
 
-    for (bitset.unmanaged.masks[0..len]) |*mask, i| {
-        if (mask.* & other.unmanaged.masks[i] > 0) {
-            return true;
-        }
-    }
+//     for (bitset.unmanaged.masks[0..len], 0..) |*mask, i| {
+//         if (mask.* & other.unmanaged.masks[i] > 0) {
+//             return true;
+//         }
+//     }
 
-    return false;
-}
+//     return false;
+// }

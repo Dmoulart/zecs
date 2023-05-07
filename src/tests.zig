@@ -179,20 +179,20 @@ test "Query update reactively" {
     var query = world.query().all(.{Position}).execute();
     defer query.deinit();
 
-    try expect(query.archetypes.items[0].entities.has(ent));
-    try expect(!query.archetypes.items[0].entities.has(ent2));
+    try expect(query.has(ent));
+    try expect(!query.has(ent2));
 
     var query2 = world.query().all(.{Velocity}).execute();
     defer query2.deinit();
 
-    try expect(!query2.archetypes.items[0].entities.has(ent));
-    try expect(query2.archetypes.items[0].entities.has(ent2));
+    try expect(!query2.has(ent));
+    try expect(query2.has(ent2));
 
     world.detach(ent, Position);
     world.attach(ent, Velocity);
 
-    try expect(query2.archetypes.items[0].entities.has(ent));
-    try expect(!query.archetypes.items[0].entities.has(ent));
+    try expect(query2.has(ent));
+    try expect(!query.has(ent));
 }
 
 test "Can query multiple components" {
@@ -216,19 +216,19 @@ test "Can query multiple components" {
     var query = world.query().all(.{ Position, Velocity }).execute();
     defer query.deinit();
 
-    try expect(query.archetypes.items[0].entities.has(ent));
-    try expect(!query.archetypes.items[0].entities.has(ent2));
+    try expect(query.has(ent));
+    try expect(!query.has(ent2));
 
     var query2 = world.query().all(.{Position}).execute();
     defer query2.deinit();
 
-    try expect(!query2.archetypes.items[0].entities.has(ent));
-    try expect(query2.archetypes.items[0].entities.has(ent2));
+    try expect(query2.has(ent));
+    try expect(query2.has(ent2));
 
     world.attach(ent2, Velocity);
 
-    try expect(query.archetypes.items[0].entities.has(ent2));
-    try expect(!query2.archetypes.items[0].entities.has(ent2));
+    try expect(query.has(ent2));
+    try expect(query2.has(ent2));
 }
 
 test "Can iterate over query using iterator " {
@@ -286,11 +286,12 @@ test "Can use the all query operator" {
     var ent4 = world.createEntity();
     world.attach(ent4, Velocity);
 
-    var result = world.query().all(.{ Position, Velocity }).execute();
-    defer result.deinit();
+    var query = world.query().all(.{ Position, Velocity }).execute();
+    defer query.deinit();
 
-    try expect(result.archetypes.items.len == 1);
-    try expect(result.archetypes.items[0].entities.count == 2);
+    // try expect(query.archetypes.items.len == 1);
+    try expect(query.has(ent));
+    try expect(query.has(ent2));
 }
 
 test "Can use the any query operator" {
@@ -370,11 +371,11 @@ test "Can use the none operator" {
     defer query.deinit();
 
     // should have root, comp1 and comp3 archetype
-    try expect(query.archetypes.items.len == 3);
-
-    for (query.archetypes.items) |arch| {
-        try expect(!arch.entities.has(ent));
-    }
+    // try expect(query.archetypes.items.len == 3);
+    try expect(!query.has(ent));
+    // for (query.archetypes.items) |arch| {
+    //     try expect(!arch.entities.has(ent));
+    // }
 }
 
 test "Can combine query operators" {

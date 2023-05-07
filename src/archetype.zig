@@ -80,7 +80,7 @@ fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) RawBitset {
     _ = alloc;
     const fields = std.meta.fields(@TypeOf(comps));
 
-    var mask: RawBitset = RawBitset.init(.{ .size = 20 });
+    var mask: RawBitset = RawBitset.init(.{});
 
     inline for (fields) |field| {
         var comp = @field(comps, field.name);

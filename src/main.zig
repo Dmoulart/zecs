@@ -13,8 +13,11 @@ const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
-// Benchmarks
 pub fn main() !void {
+    try bench();
+}
+// Benchmarks
+pub fn bench() !void {
     const thresholds: [5]u32 = [_]u32{ 16_000, 65_000, 262_000, 1_000_000, 2_000_000 };
 
     for (thresholds[0..thresholds.len]) |n| {
