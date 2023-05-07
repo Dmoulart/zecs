@@ -15,19 +15,19 @@ const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
-pub fn Prefab(comptime definition: anytype, comptime world: anytype) type {
-    const components = std.meta.fields(@TypeOf(definition));
-    return (struct {
-        pub fn create() Entity {
-            var entity = world.createEntity();
-            inline for (components) |field| {
-                var component = @field(definition, field.name);
-                world.toggleComponent(entity, component);
-            }
-            return entity;
-        }
-    }).create;
-}
+// pub fn Prefab(comptime definition: anytype, comptime world: anytype) type {
+//     const components = std.meta.fields(@TypeOf(definition));
+//     return (struct {
+//         pub fn create() Entity {
+//             var entity = world.createEntity();
+//             inline for (components) |field| {
+//                 var component = @field(definition, field.name);
+//                 world.toggleComponent(entity, component);
+//             }
+//             return entity;
+//         }
+//     }).create;
+// }
 
 pub fn World(comptime ComponentsTypes: anytype) type {
     const WorldComponents = comptime blk: {
@@ -125,27 +125,25 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             self.entities.delete(entity);
         }
 
-        pub fn has(self: *Self, entity: Entity, component: anytype) bool {
-            // assert(self.contains(entity));
-
+        pub fn has(self: *Self, entity: Entity, comptime component: anytype) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
-            return archetype.has(component.id);
+            return archetype.has(comptime Self.getRegisteredComponent(component).id);
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
             return self.entities.contains(entity);
         }
 
-        pub fn attach(self: *Self, entity: Entity, component: anytype) void {
+        pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(!self.has(entity, component));
 
-            self.toggleComponent(entity, component);
+            self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
         }
 
-        pub fn detach(self: *Self, entity: Entity, component: anytype) void {
+        pub fn detach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(self.has(entity, component));
 
-            self.toggleComponent(entity, component);
+            self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
         }
 
         // pub fn query(self: *Self) *QueryBuilder {
@@ -154,8 +152,12 @@ pub fn World(comptime ComponentsTypes: anytype) type {
         //     return &self.queryBuilder;
         // }
 
+        fn getRegisteredComponent(comptime component: anytype) @TypeOf(@field(components, component.name)) {
+            return comptime @field(components, component.name);
+        }
+
         pub fn prefab(comptime definition: anytype) fn (*World(ComponentsTypes)) Entity {
-            const definition_fields = std.meta.fields(@TypeOf(definition));
+            const definition_fields = comptime std.meta.fields(@TypeOf(definition));
             return (struct {
                 pub fn create(world: *World(ComponentsTypes)) Entity {
                     var entity = world.createEntity();
@@ -235,8 +237,49 @@ test "Create Prefab Function" {
     defer game.deinit();
 
     var ent = actor(&game);
+
     try expect(ent == 1);
-    try expect(game.has(ent, Game.components.Position));
-    try expect(game.has(ent, Game.components.Velocity));
-    try expect(!game.has(ent, Game.components.Rotation));
+    try expect(game.has(ent, Position));
+    try expect(game.has(ent, Velocity));
+    try expect(!game.has(ent, Rotation));
+}
+
+test "Create attach and detach components" {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+    const Rotation = Component("Rotation", struct {
+        degrees: i8,
+    });
+
+    const Game = World(.{
+        Position,
+        Velocity,
+        Rotation,
+    });
+
+    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    defer game.deinit();
+
+    var ent = game.createEntity();
+
+    game.attach(ent, Position);
+    try expect(game.has(ent, Position));
+    try expect(!game.has(ent, Rotation));
+
+    game.attach(ent, Rotation);
+    try expect(game.has(ent, Rotation));
+
+    game.detach(ent, Position);
+    try expect(!game.has(ent, Position));
+    try expect(game.has(ent, Rotation));
+
+    game.detach(ent, Rotation);
+    try expect(!game.has(ent, Position));
+    try expect(!game.has(ent, Rotation));
 }
