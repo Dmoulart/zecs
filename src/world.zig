@@ -7,27 +7,13 @@ const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
-// const QueryBuilder = @import("./query.zig").QueryBuilder;
-// const Query = @import("./query.zig").Query;
+const QueryBuilder = @import("./query.zig").QueryBuilder;
+const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
-
-// pub fn Prefab(comptime definition: anytype, comptime world: anytype) type {
-//     const components = std.meta.fields(@TypeOf(definition));
-//     return (struct {
-//         pub fn create() Entity {
-//             var entity = world.createEntity();
-//             inline for (components) |field| {
-//                 var component = @field(definition, field.name);
-//                 world.toggleComponent(entity, component);
-//             }
-//             return entity;
-//         }
-//     }).create;
-// }
 
 pub fn World(comptime ComponentsTypes: anytype) type {
     const WorldComponents = comptime blk: {
@@ -66,13 +52,15 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
         pub const components: WorldComponents = WorldComponents{};
 
+        pub const queryBuilder: QueryBuilder(WorldComponents);
+
         allocator: std.mem.Allocator,
 
         archetypes: ArchetypeStorage,
 
         entities: EntityStorage,
 
-        // queryBuilder: QueryBuilder(Self),
+        queryBuilder: QueryBuilder(@TypeOf(Self)),
 
         root: *Archetype,
 
@@ -100,13 +88,13 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                 .allocator = options.allocator,
                 .archetypes = archetypes,
                 .entities = entities,
-                // .queryBuilder = undefined,
+                .queryBuilder = undefined,
                 .root = archetypes.getRoot(),
             };
 
-            // var queryBuilder = try QueryBuilder(World(ComponentsTypes)).init(options.allocator);
+            var queryBuilder = try QueryBuilder(@TypeOf(world)).init(options.allocator);
 
-            // world.queryBuilder = queryBuilder;
+            world.queryBuilder = queryBuilder;
 
             return world;
         }
@@ -153,11 +141,11 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
         }
 
-        // pub fn query(self: *Self) *QueryBuilder {
-        //     // Errrk ugly stuff
-        //     self.queryBuilder.world = self;
-        //     return &self.queryBuilder;
-        // }
+        pub fn query(self: *Self) *QueryBuilder {
+            // Errrk ugly stuff
+            self.queryBuilder.world = self;
+            return &self.queryBuilder;
+        }
 
         fn getRegisteredComponent(comptime component: anytype) @TypeOf(@field(components, component.name)) {
             return comptime @field(components, component.name);

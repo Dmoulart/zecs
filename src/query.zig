@@ -40,7 +40,7 @@ pub const Query = struct {
         self.matchers.deinit();
     }
 
-    fn execute(self: *Self, world: *World) void {
+    fn execute(self: *Self, world: anytype) void {
         archetypes_loop: for (world.archetypes.all.items) |*archetype| {
             for (self.matchers.items) |*matcher| {
                 const mask = &matcher.mask;
@@ -78,8 +78,8 @@ pub const QueryMatcher = struct {
         };
     }
 };
-
-pub fn QueryBuilder(comptime world: anytype) type {
+pub fn QueryBuilder(comptime WorldComponents: anytype) type {
+    _ = WorldComponents;
     return struct {
         const Self = @This();
 
@@ -87,13 +87,10 @@ pub fn QueryBuilder(comptime world: anytype) type {
 
         matchers: std.ArrayList(QueryMatcher),
 
-        world: @TypeOf(world),
-
-        pub fn init(allocator: std.mem.Allocator) !QueryBuilder {
-            return QueryBuilder{
+        pub fn init(allocator: std.mem.Allocator) !Self {
+            return Self{
                 .allocator = allocator,
                 .matchers = std.ArrayList(QueryMatcher).init(allocator),
-                .world = undefined,
             };
         }
 
@@ -131,19 +128,25 @@ pub fn QueryBuilder(comptime world: anytype) type {
             var mask = RawBitset.init(.{});
 
             inline for (components) |field| {
-                var component = @field(data, field.name);
+                const component = @field(data, field.name);
                 mask.set(component.id);
             }
 
-            self.matchers.append(QueryMatcher{ .op_type = matcher_type, .mask = mask }) catch unreachable;
+            self.matchers.append(QueryMatcher{
+                .op_type = matcher_type,
+                .mask = mask,
+            }) catch unreachable;
         }
 
-        pub fn execute(self: *Self) Query {
-            var created_query = Query.init(self.matchers.clone() catch unreachable, self.allocator);
+        pub fn from(self: *Self, world: anytype) Query {
+            var created_query = Query.init(
+                self.matchers.clone() catch unreachable,
+                self.allocator,
+            );
 
             self.matchers.clearAndFree();
 
-            created_query.execute(self.world);
+            created_query.execute(world);
 
             return created_query;
         }
