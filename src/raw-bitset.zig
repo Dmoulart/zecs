@@ -4,21 +4,21 @@ const expect = @import("std").testing.expect;
 const RAW_BITSET_CAPACITY: RawBitset.Type = 40;
 const RAW_BITSET_WIDTH: RawBitset.Type = 64;
 
+//
+// Todo : rename size and count, add capacity in options, (make this comptime ?)
+//
 pub const RawBitset = struct {
     const Self = @This();
     const Type = usize;
     const Shift = std.math.Log2Int(Type);
-    // const t = std.bit_set.DynamicBitSet
+
     size: Type,
 
     count: Type = 0,
 
     data: [RAW_BITSET_CAPACITY]Type,
 
-    const RawBitsetOptions = struct {
-        // allocator: std.mem.Allocator,
-        // size: Type,
-    };
+    const RawBitsetOptions = struct {};
 
     pub fn init(options: RawBitsetOptions) Self {
         _ = options;
@@ -44,18 +44,31 @@ pub const RawBitset = struct {
 
         if (index > self.count) self.count = index;
 
-        self.data[maskIndex(bit)] |= maskBit(bit);
+        self.data[index] |= maskBit(bit);
     }
 
     pub fn unset(
         self: *Self,
         bit: Type,
     ) void {
-        // var index = maskIndex(bit);
+        var index = maskIndex(bit);
 
-        // if (index == self.count) return false;
+        if (index > self.count) return;
 
-        self.data[maskIndex(bit)] ^= maskBit(bit);
+        self.data[index] ^= maskBit(bit);
+
+        if (self.data[index] == 0) {
+            var highest_index: usize = 0;
+            // must shrink
+            for (self.data[0..]) |*mask, i| {
+                if (mask.* == 0) {
+                    break;
+                } else {
+                    highest_index = i;
+                }
+            }
+            self.count = highest_index;
+        }
     }
 
     pub fn has(self: *Self, bit: Type) bool {
@@ -184,4 +197,19 @@ test "Can clone itself" {
     try expect(b.has(1));
     try expect(b.has(2));
     try expect(!b.has(3));
+}
+
+test "Can shrink" {
+    var a = RawBitset.init(.{});
+
+    a.set(1);
+    a.set(2);
+
+    var b = a.clone();
+
+    b.set(1000);
+    try expect(!a.contains(&b));
+
+    b.unset(1000);
+    try expect(a.contains(&b));
 }
