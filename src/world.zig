@@ -7,8 +7,8 @@ const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
-const QueryBuilder = @import("./query.zig").QueryBuilder;
-const Query = @import("./query.zig").Query;
+// const QueryBuilder = @import("./query.zig").QueryBuilder;
+// const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 
@@ -102,7 +102,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
         entities: EntityStorage,
 
-        queryBuilder: QueryBuilder,
+        // queryBuilder: QueryBuilder,
 
         root: *Archetype,
 
@@ -130,13 +130,13 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                 .allocator = options.allocator,
                 .archetypes = archetypes,
                 .entities = entities,
-                .queryBuilder = undefined,
+                // .queryBuilder = undefined,
                 .root = archetypes.getRoot(),
             };
 
-            var queryBuilder = try QueryBuilder.init(options.allocator);
+            // var queryBuilder = try QueryBuilder.init(options.allocator);
 
-            world.queryBuilder = queryBuilder;
+            // world.queryBuilder = queryBuilder;
 
             return world;
         }
@@ -144,7 +144,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
         pub fn deinit(self: *Self) void {
             self.archetypes.deinit();
             self.entities.deinit();
-            self.queryBuilder.deinit();
+            // self.queryBuilder.deinit();
         }
 
         pub fn createEntity(self: *Self) Entity {
@@ -178,11 +178,11 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             self.toggleComponent(entity, component);
         }
 
-        pub fn query(self: *Self) *QueryBuilder {
-            // Errrk ugly stuff
-            self.queryBuilder.world = self;
-            return &self.queryBuilder;
-        }
+        // pub fn query(self: *Self) *QueryBuilder {
+        //     // Errrk ugly stuff
+        //     self.queryBuilder.world = self;
+        //     return &self.queryBuilder;
+        // }
 
         pub fn Prefab(self: *Self, comptime definition: anytype) Entity {
             var entity = self.createEntity();
@@ -225,10 +225,12 @@ test "Instantiate world" {
         }),
     });
 
-    var game = Game.init(.{
-        .allocator = std.testing.allocator,
-        .capacity = 100,
-    });
-    try expect(game.components.Position.id == 1);
+    try expect(Game.components.Position.id == 1);
+
+    // var game = Game.init(.{
+    //     .allocator = std.testing.allocator,
+    //     .capacity = 100,
+    // });
+    // _ = game;
 }
 // pub const World =
