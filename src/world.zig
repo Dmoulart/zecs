@@ -64,7 +64,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
     return struct {
         const Self = @This();
 
-        const components: WorldComponents = WorldComponents{};
+        pub const components: WorldComponents = WorldComponents{};
 
         allocator: std.mem.Allocator,
 
