@@ -160,7 +160,8 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                     var entity = world.createEntity();
 
                     inline for (std.meta.fields(@TypeOf(definition))) |field| {
-                        const component = @field(definition, field.name);
+                        const ComponentType = @field(definition, field.name);
+                        const component = @field(components, ComponentType.name);
                         world.toggleComponent(entity, component);
                     }
 
@@ -228,7 +229,9 @@ test "Create Prefab Function" {
         }),
     });
 
-    var game = Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    defer game.deinit();
+    
     var ent = actor(&game);
     try expect(ent == 1);
     try expect(game.has(ent, Game.components.Position));
