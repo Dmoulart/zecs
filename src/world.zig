@@ -58,121 +58,165 @@ pub fn Prefab(comptime definition: anytype, comptime world: World) type {
     // };
 }
 
-pub const World = struct {
-    const Self = @This();
+pub fn World(comptime ComponentsTypes: anytype) type {
+    const WorldComponents = comptime blk: {
+        var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
+        const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
+        var component_counter: u32 = 0;
 
-    allocator: std.mem.Allocator,
+        inline for (ComponentsTypesFields) |field| {
+            component_counter += 1;
+            var ComponentType = @field(ComponentsTypes, field.name);
 
-    archetypes: ArchetypeStorage,
+            var component_instance = ComponentType{
+                .id = component_counter,
+            };
 
-    entities: EntityStorage,
-
-    queryBuilder: QueryBuilder,
-
-    root: *Archetype,
-
-    const WorldOptions = struct {
-        allocator: std.mem.Allocator,
-        capacity: ?u32 = DEFAULT_WORLD_CAPACITY,
-        archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
+            fields = fields ++ [_]std.builtin.Type.StructField{.{
+                .name = ComponentType.name[0..],
+                .field_type = ComponentType,
+                .is_comptime = true,
+                .alignment = @alignOf(ComponentType),
+                .default_value = &component_instance,
+            }};
+        }
+        break :blk @Type(.{
+            .Struct = .{
+                .layout = .Auto,
+                .is_tuple = false,
+                .fields = fields,
+                .decls = &[_]std.builtin.Type.Declaration{},
+            },
+        });
     };
 
-    pub fn init(options: WorldOptions) !Self {
-        var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
-        var archetypes_storage_capacity = options.archetypes_capacity;
+    return struct {
+        const Self = @This();
 
-        var archetypes = try ArchetypeStorage.init(.{
-            .capacity = archetypes_storage_capacity,
-            .archetype_capacity = capacity,
-        }, options.allocator);
+        const components: WorldComponents = WorldComponents{};
 
-        var entities = try EntityStorage.init(.{
-            .allocator = options.allocator,
-            .capacity = capacity,
-        });
+        allocator: std.mem.Allocator,
 
-        var world = Self{
-            .allocator = options.allocator,
-            .archetypes = archetypes,
-            .entities = entities,
-            .queryBuilder = undefined,
-            .root = archetypes.getRoot(),
+        archetypes: ArchetypeStorage,
+
+        entities: EntityStorage,
+
+        queryBuilder: QueryBuilder,
+
+        root: *Archetype,
+
+        const WorldOptions = struct {
+            allocator: std.mem.Allocator,
+            capacity: ?u32 = DEFAULT_WORLD_CAPACITY,
+            archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
-        var queryBuilder = try QueryBuilder.init(options.allocator);
+        pub fn init(options: WorldOptions) !Self {
+            var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
+            var archetypes_storage_capacity = options.archetypes_capacity;
 
-        world.queryBuilder = queryBuilder;
+            var archetypes = try ArchetypeStorage.init(.{
+                .capacity = archetypes_storage_capacity,
+                .archetype_capacity = capacity,
+            }, options.allocator);
 
-        return world;
-    }
+            var entities = try EntityStorage.init(.{
+                .allocator = options.allocator,
+                .capacity = capacity,
+            });
 
-    pub fn deinit(self: *Self) void {
-        self.archetypes.deinit();
-        self.entities.deinit();
-        self.queryBuilder.deinit();
-    }
+            var world = Self{
+                .allocator = options.allocator,
+                .archetypes = archetypes,
+                .entities = entities,
+                .queryBuilder = undefined,
+                .root = archetypes.getRoot(),
+            };
 
-    pub fn createEntity(self: *Self) Entity {
-        return self.entities.create(self.archetypes.getRoot());
-    }
+            var queryBuilder = try QueryBuilder.init(options.allocator);
 
-    pub fn deleteEntity(self: *Self, entity: Entity) void {
-        self.entities.delete(entity);
-    }
+            world.queryBuilder = queryBuilder;
 
-    pub fn has(self: *Self, entity: Entity, component: anytype) bool {
-        // assert(self.contains(entity));
+            return world;
+        }
 
-        var archetype = self.entities.getArchetype(entity) orelse unreachable;
-        return archetype.has(component.id);
-    }
+        pub fn deinit(self: *Self) void {
+            self.archetypes.deinit();
+            self.entities.deinit();
+            self.queryBuilder.deinit();
+        }
 
-    pub fn contains(self: *Self, entity: Entity) bool {
-        return self.entities.contains(entity);
-    }
+        pub fn createEntity(self: *Self) Entity {
+            return self.entities.create(self.archetypes.getRoot());
+        }
 
-    pub fn attach(self: *Self, entity: Entity, component: anytype) void {
-        // assert(!self.has(entity, component));
+        pub fn deleteEntity(self: *Self, entity: Entity) void {
+            self.entities.delete(entity);
+        }
 
-        self.toggleComponent(entity, component);
-    }
+        pub fn has(self: *Self, entity: Entity, component: anytype) bool {
+            // assert(self.contains(entity));
 
-    pub fn detach(self: *Self, entity: Entity, component: anytype) void {
-        // assert(self.has(entity, component));
+            var archetype = self.entities.getArchetype(entity) orelse unreachable;
+            return archetype.has(component.id);
+        }
 
-        self.toggleComponent(entity, component);
-    }
+        pub fn contains(self: *Self, entity: Entity) bool {
+            return self.entities.contains(entity);
+        }
 
-    pub fn query(self: *Self) *QueryBuilder {
-        // Errrk ugly stuff
-        self.queryBuilder.world = self;
-        return &self.queryBuilder;
-    }
+        pub fn attach(self: *Self, entity: Entity, component: anytype) void {
+            // assert(!self.has(entity, component));
 
-    pub fn Prefab(self: *Self, comptime definition: anytype) Entity {
-        var entity = self.createEntity();
-        for (std.meta.fields(@TypeOf(definition))) |field| {
-            var component = @field(definition, field.name);
             self.toggleComponent(entity, component);
         }
-        return entity;
-    }
 
-    fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
-        var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
-        if (archetype.edge.get(component.id)) |edge| {
-            self.swapArchetypes(entity, archetype, edge);
-        } else {
-            var new_archetype = self.archetypes.derive(archetype, component.id);
+        pub fn detach(self: *Self, entity: Entity, component: anytype) void {
+            // assert(self.has(entity, component));
 
-            self.swapArchetypes(entity, archetype, new_archetype);
+            self.toggleComponent(entity, component);
         }
-    }
 
-    fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-        self.entities.setArchetype(entity, new);
+        pub fn query(self: *Self) *QueryBuilder {
+            // Errrk ugly stuff
+            self.queryBuilder.world = self;
+            return &self.queryBuilder;
+        }
 
-        old.entities.removeUnsafe(entity);
-        new.entities.add(entity);
-    }
-};
+        pub fn Prefab(self: *Self, comptime definition: anytype) Entity {
+            var entity = self.createEntity();
+            for (std.meta.fields(@TypeOf(definition))) |field| {
+                var component = @field(definition, field.name);
+                self.toggleComponent(entity, component);
+            }
+            return entity;
+        }
+
+        fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
+            var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
+            if (archetype.edge.get(component.id)) |edge| {
+                self.swapArchetypes(entity, archetype, edge);
+            } else {
+                var new_archetype = self.archetypes.derive(archetype, component.id);
+
+                self.swapArchetypes(entity, archetype, new_archetype);
+            }
+        }
+
+        fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
+            self.entities.setArchetype(entity, new);
+
+            old.entities.removeUnsafe(entity);
+            new.entities.add(entity);
+        }
+    };
+}
+
+test "Instantiate world"{
+    Component(struct {
+        x: f32,
+        y: f32,
+    });
+    
+}
+// pub const World =
