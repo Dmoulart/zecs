@@ -53,7 +53,10 @@ fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    var world = try Ecs.init(.{
+        .allocator = arena.child_allocator,
+        .capacity = n,
+    });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -63,8 +66,8 @@ fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     std.debug.print("\n", .{});
     var before = std.time.milliTimestamp();
 
-    const actor = Ecs.prefab(.{ Position, Velocity });
-    actor.precalc(&world);
+    var actor = Ecs.Prefab(.{ Position, Velocity }){};
+
     while (i < n) : (i += 1) {
         _ = actor.create(&world);
     }

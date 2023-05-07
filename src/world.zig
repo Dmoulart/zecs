@@ -156,38 +156,41 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             return comptime @field(components, component.name);
         }
 
-        pub fn prefab(comptime definition: anytype) type {
+        pub fn Prefab(comptime definition: anytype) type {
             const definition_fields = comptime std.meta.fields(@TypeOf(definition));
 
-            const Prefab = struct {
-                var prefab_archetype: *Archetype = undefined;
-                var ready = false;
-                pub fn precalc(world: *World(ComponentsTypes)) void {
+            return struct {
+                prefab_archetype: ?*Archetype = null,
+
+                ready: bool = false,
+
+                fn precalcArchetype(self: *@This(), world: *World(ComponentsTypes)) void {
                     var archetype = world.archetypes.getRoot();
+
                     inline for (definition_fields) |*field| {
                         const ComponentType = @field(definition, field.name);
                         const component = @field(components, ComponentType.name);
+
                         if (archetype.edge.get(component.id)) |derived| {
                             archetype = derived;
                         } else {
                             archetype = world.archetypes.derive(archetype, component.id);
                         }
                     }
-                    // std.debug.print("arch {}", .{archetype});
-                    prefab_archetype = archetype;
-                    ready = true;
+
+                    self.prefab_archetype = archetype;
+                    self.ready = true;
+                    std.debug.print("ready {}", .{self.ready});
                 }
 
-                pub fn create(world: *World(ComponentsTypes)) Entity {
-                    // precalc(world);
-                    // std.debug.print("count {}", .{world.entities.count});
-                    const entity = world.entities.create(prefab_archetype);
-                    // std.debug.print("cap {}", .{world.archetypes.capacity});
-                    // std.debug.print("arch cap {}", .{world.archetypes.archetype_capacity});
+                pub fn create(self: *@This(), world: *World(ComponentsTypes)) Entity {
+                    if (!self.ready) self.precalcArchetype(world);
+
+                    const entity = world.entities.create(self.prefab_archetype orelse unreachable);
+
                     return entity;
                 }
             };
-            return Prefab;
         }
 
         fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
