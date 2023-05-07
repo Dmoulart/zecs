@@ -64,8 +64,9 @@ fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     var before = std.time.milliTimestamp();
 
     const actor = Ecs.prefab(.{ Position, Velocity });
+    actor.precalc(&world);
     while (i < n) : (i += 1) {
-        _ = actor(&world);
+        _ = actor.create(&world);
     }
 
     var now = std.time.milliTimestamp();

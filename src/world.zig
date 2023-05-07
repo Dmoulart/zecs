@@ -156,21 +156,38 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             return comptime @field(components, component.name);
         }
 
-        pub fn prefab(comptime definition: anytype) fn (*World(ComponentsTypes)) Entity {
+        pub fn prefab(comptime definition: anytype) type {
             const definition_fields = comptime std.meta.fields(@TypeOf(definition));
-            return (struct {
-                pub fn create(world: *World(ComponentsTypes)) Entity {
-                    var entity = world.createEntity();
 
-                    inline for (definition_fields) |field| {
+            const Prefab = struct {
+                var prefab_archetype: *Archetype = undefined;
+                var ready = false;
+                pub fn precalc(world: *World(ComponentsTypes)) void {
+                    var archetype = world.archetypes.getRoot();
+                    inline for (definition_fields) |*field| {
                         const ComponentType = @field(definition, field.name);
                         const component = @field(components, ComponentType.name);
-                        world.toggleComponent(entity, component);
+                        if (archetype.edge.get(component.id)) |derived| {
+                            archetype = derived;
+                        } else {
+                            archetype = world.archetypes.derive(archetype, component.id);
+                        }
                     }
+                    // std.debug.print("arch {}", .{archetype});
+                    prefab_archetype = archetype;
+                    ready = true;
+                }
 
+                pub fn create(world: *World(ComponentsTypes)) Entity {
+                    // precalc(world);
+                    // std.debug.print("count {}", .{world.entities.count});
+                    const entity = world.entities.create(prefab_archetype);
+                    // std.debug.print("cap {}", .{world.archetypes.capacity});
+                    // std.debug.print("arch cap {}", .{world.archetypes.archetype_capacity});
                     return entity;
                 }
-            }).create;
+            };
+            return Prefab;
         }
 
         fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {

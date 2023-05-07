@@ -51,6 +51,7 @@ pub const Archetype = struct {
 
     pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) Archetype {
         var mask: ArchetypeMask = self.mask.clone();
+
         if (mask.has(id)) {
             mask.unset(id);
         } else {
