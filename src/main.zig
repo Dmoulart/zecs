@@ -28,7 +28,7 @@ const Ecs = World(.{
 pub fn main() !void {
     try bench();
 }
-// Benchmarks
+
 pub fn bench() !void {
     run(createEntitiesWithTwoComponents);
 

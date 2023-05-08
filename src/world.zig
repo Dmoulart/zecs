@@ -19,6 +19,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
     const WorldComponents = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
         const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
+        
         var component_counter: u32 = 0;
 
         inline for (ComponentsTypesFields) |field| {
@@ -160,8 +161,8 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                     var archetype = world.archetypes.getRoot();
 
                     inline for (definition_fields) |*field| {
-                        const ComponentType = @field(definition, field.name);
-                        const component = @field(components, ComponentType.name);
+                        const ComponentType = comptime @field(definition, field.name);
+                        const component = comptime @field(components, ComponentType.name);
 
                         if (archetype.edge.get(component.id)) |derived| {
                             archetype = derived;
@@ -172,14 +173,6 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
                     type_archetype = archetype;
                 }
-
-                // fn create(self: *@This(), world: *Self) Entity {
-                //     if (!self.ready) self.precalcArchetype(world);
-
-                //     const entity = world.entities.create(self.type_archetype orelse unreachable);
-
-                //     return entity;
-                // }
             };
         }
 
