@@ -5,9 +5,17 @@ pub const ComponentId = u64;
 
 pub fn Component(comptime component_name: []const u8, comptime T: type) type {
     return struct {
+        const Self = @This();
+
         pub const name = component_name;
+
         id: ComponentId,
-        storage: std.MultiArrayList(T) = std.MultiArrayList(T){},
+
+        storage: std.MultiArrayList(T) = undefined,
+
+        pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
+            self.storage.deinit(gpa);
+        }
     };
 }
 

@@ -15,11 +15,11 @@ const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
-pub fn World(comptime ComponentsTypes: anytype) type {
+pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     const WorldComponents = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
         const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
-        
+
         var component_counter: u32 = 0;
 
         inline for (ComponentsTypesFields) |field| {
@@ -51,7 +51,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
     return struct {
         const Self = @This();
 
-        pub const components: WorldComponents = WorldComponents{};
+        pub var components: WorldComponents = WorldComponents{};
 
         allocator: std.mem.Allocator,
 
@@ -65,12 +65,12 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
         const WorldOptions = struct {
             allocator: std.mem.Allocator,
-            capacity: ?u32 = DEFAULT_WORLD_CAPACITY,
+
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
         pub fn init(options: WorldOptions) !Self {
-            var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
+            // var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
             var archetypes_storage_capacity = options.archetypes_capacity;
 
             var archetypes = try ArchetypeStorage.init(.{
@@ -97,7 +97,23 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
             world.queryBuilder = queryBuilder;
 
+            // Ensure components capacity
+            // const world_components = comptime std.meta.fields(@TypeOf(components));
+            // inline for (world_components) |*component_field| {
+            //     var component_instance = comptime @field(components, component_field.name);
+            //     component_instance.storage.ensureTotalCapacity(world.allocator, capacity) catch unreachable;
+            // }
+
             return world;
+        }
+
+        fn contextDeinit(allocator: std.mem.Allocator) void {
+            _ = allocator;
+            // const world_components = comptime std.meta.fields(@TypeOf(components));
+            // inline for (world_components) |*component_field| {
+            //     var component_instance = comptime @field(components, component_field.name);
+            //     component_instance.deinit(allocator);
+            // }
         }
 
         pub fn deinit(self: *Self) void {
@@ -210,7 +226,7 @@ test "Create World type with comptime components" {
             x: f32,
             y: f32,
         }),
-    });
+    }, 10);
 
     try expect(Ecs.components.Position.id == 1);
     try expect(Ecs.components.Velocity.id == 2);
@@ -233,10 +249,10 @@ test "Create attach and detach components" {
         Position,
         Velocity,
         Rotation,
-    });
-
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    }, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
 
     var ent = ecs.createEmpty();
 
@@ -273,15 +289,17 @@ test "Create type" {
         Position,
         Velocity,
         Rotation,
-    });
+    }, 10);
 
     const Actor = Ecs.Type(.{
         Position,
         Velocity,
     });
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
     ecs.registerType(Actor);
 
     const ent = ecs.create(Actor);
@@ -290,4 +308,18 @@ test "Create type" {
     try expect(ecs.has(ent, Position));
     try expect(ecs.has(ent, Velocity));
     try expect(!ecs.has(ent, Rotation));
+
+    // const world_components = comptime std.meta.fields(@TypeOf(Ecs.components));
+    // _ = world_components;
+    // var pos = @field(Ecs.components, "Position");
+    // var vel = @field(Ecs.components, "Velocity");
+    // var rot = @field(Ecs.components, "Rotation");
+
+    // pos.storage.deinit(ecs.allocator);
+    // vel.storage.deinit(ecs.allocator);
+    // rot.storage.deinit(ecs.allocator);
+    // inline for (world_components) |*component_field| {
+    //     var component_instance = comptime @field(Ecs.components, component_field.name);
+    //     component_instance.deinit(ecs.allocator);
+    // }
 }
