@@ -109,10 +109,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             return self.entities.create(self.archetypes.getRoot());
         }
 
-        pub fn create(self: *Self, entity_type: anytype) Entity {
-            if (!entity_type.ready) {
-                entity_type.precalcArchetype(self);
-            }
+        pub fn create(self: *Self, comptime entity_type: anytype) Entity {
             return self.entities.create(entity_type.type_archetype orelse unreachable);
         }
 
@@ -157,11 +154,9 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             const definition_fields = comptime std.meta.fields(@TypeOf(definition));
 
             return struct {
-                type_archetype: ?*Archetype = null,
+                pub var type_archetype: ?*Archetype = null;
 
-                ready: bool = false,
-
-                fn precalcArchetype(self: *@This(), world: *Self) void {
+                fn precalcArchetype(world: *Self) void {
                     var archetype = world.archetypes.getRoot();
 
                     inline for (definition_fields) |*field| {
@@ -175,18 +170,21 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                         }
                     }
 
-                    self.type_archetype = archetype;
-                    self.ready = true;
+                    type_archetype = archetype;
                 }
 
-                fn create(self: *@This(), world: *Self) Entity {
-                    if (!self.ready) self.precalcArchetype(world);
+                // fn create(self: *@This(), world: *Self) Entity {
+                //     if (!self.ready) self.precalcArchetype(world);
 
-                    const entity = world.entities.create(self.type_archetype orelse unreachable);
+                //     const entity = world.entities.create(self.type_archetype orelse unreachable);
 
-                    return entity;
-                }
+                //     return entity;
+                // }
             };
+        }
+
+        pub fn registerType(self: *Self, comptime entity_type: anytype) void {
+            entity_type.precalcArchetype(self);
         }
 
         fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
@@ -210,7 +208,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 }
 
 test "Create World type with comptime components" {
-    const Game = World(.{
+    const Ecs = World(.{
         Component("Position", struct {
             x: f32,
             y: f32,
@@ -221,8 +219,8 @@ test "Create World type with comptime components" {
         }),
     });
 
-    try expect(Game.components.Position.id == 1);
-    try expect(Game.components.Velocity.id == 2);
+    try expect(Ecs.components.Position.id == 1);
+    try expect(Ecs.components.Velocity.id == 2);
 }
 
 test "Create attach and detach components" {
@@ -238,31 +236,31 @@ test "Create attach and detach components" {
         degrees: i8,
     });
 
-    const Game = World(.{
+    const Ecs = World(.{
         Position,
         Velocity,
         Rotation,
     });
 
-    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
-    defer game.deinit();
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    defer ecs.deinit();
 
-    var ent = game.createEntity();
+    var ent = ecs.createEntity();
 
-    game.attach(ent, Position);
-    try expect(game.has(ent, Position));
-    try expect(!game.has(ent, Rotation));
+    ecs.attach(ent, Position);
+    try expect(ecs.has(ent, Position));
+    try expect(!ecs.has(ent, Rotation));
 
-    game.attach(ent, Rotation);
-    try expect(game.has(ent, Rotation));
+    ecs.attach(ent, Rotation);
+    try expect(ecs.has(ent, Rotation));
 
-    game.detach(ent, Position);
-    try expect(!game.has(ent, Position));
-    try expect(game.has(ent, Rotation));
+    ecs.detach(ent, Position);
+    try expect(!ecs.has(ent, Position));
+    try expect(ecs.has(ent, Rotation));
 
-    game.detach(ent, Rotation);
-    try expect(!game.has(ent, Position));
-    try expect(!game.has(ent, Rotation));
+    ecs.detach(ent, Rotation);
+    try expect(!ecs.has(ent, Position));
+    try expect(!ecs.has(ent, Rotation));
 }
 
 test "Create type" {
@@ -278,24 +276,25 @@ test "Create type" {
         degrees: i8,
     });
 
-    const Game = World(.{
+    const Ecs = World(.{
         Position,
         Velocity,
         Rotation,
     });
 
-    var actor = Game.Type(.{
+    const Actor = Ecs.Type(.{
         Position,
         Velocity,
-    }){};
+    });
 
-    var game = try Game.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
-    defer game.deinit();
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
+    defer ecs.deinit();
+    ecs.registerType(Actor);
 
-    const ent = game.create(&actor);
+    const ent = ecs.create(Actor);
 
     try expect(ent == 1);
-    try expect(game.has(ent, Position));
-    try expect(game.has(ent, Velocity));
-    try expect(!game.has(ent, Rotation));
+    try expect(ecs.has(ent, Position));
+    try expect(ecs.has(ent, Velocity));
+    try expect(!ecs.has(ent, Rotation));
 }

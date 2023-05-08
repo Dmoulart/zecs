@@ -432,12 +432,7 @@ test "Can use the none operator" {
     var query = world.query().none(.{ Comp1, Comp2 }).execute();
     defer query.deinit();
 
-    // should have root, comp1 and comp3 archetype
-    // try expect(query.archetypes.items.len == 3);
     try expect(!query.has(ent));
-    // for (query.archetypes.items) |arch| {
-    //     try expect(!arch.entities.has(ent));
-    // }
 }
 
 test "Can combine query operators" {

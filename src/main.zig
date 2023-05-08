@@ -11,7 +11,6 @@ const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
-const Vector = struct { x: f64 = 0, y: f64 = 0 };
 const Position = Component("Position", struct {
     x: f32,
     y: f32,
@@ -31,24 +30,22 @@ pub fn main() !void {
 }
 // Benchmarks
 pub fn bench() !void {
+    run(createEntitiesWithTwoComponents);
+
+    run(createEntitiesWithTwoComponentsPrefab);
+
+    run(removeAndAddAComponent);
+
+    run(deleteEntities);
+}
+
+fn run(comptime function: anytype) void {
     const thresholds: [5]u32 = [_]u32{ 16_000, 65_000, 262_000, 1_000_000, 2_000_000 };
-
     for (thresholds[0..thresholds.len]) |n| {
-        try createEntitiesWithTwoComponents(n);
-    }
-
-    for (thresholds[0..thresholds.len]) |n| {
-        try createEntitiesWithTwoComponentsPrefab(n);
-    }
-
-    for (thresholds[0..thresholds.len]) |n| {
-        try removeAndAddAComponent(n);
-    }
-
-    for (thresholds[0..thresholds.len]) |n| {
-        try deleteEntities(n);
+        function(n) catch unreachable;
     }
 }
+
 fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -66,10 +63,11 @@ fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     std.debug.print("\n", .{});
     var before = std.time.milliTimestamp();
 
-    var actor = Ecs.Type(.{ Position, Velocity }){};
+    const Actor = Ecs.Type(.{ Position, Velocity });
+    world.registerType(Actor);
 
     while (i < n) : (i += 1) {
-        _ = world.create(&actor);
+        _ = world.create(Actor);
     }
 
     var now = std.time.milliTimestamp();
