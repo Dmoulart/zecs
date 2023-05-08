@@ -52,15 +52,13 @@ pub fn World(comptime ComponentsTypes: anytype) type {
 
         pub const components: WorldComponents = WorldComponents{};
 
-        pub const queryBuilder: QueryBuilder(WorldComponents);
-
         allocator: std.mem.Allocator,
 
         archetypes: ArchetypeStorage,
 
         entities: EntityStorage,
 
-        queryBuilder: QueryBuilder(@TypeOf(Self)),
+        queryBuilder: QueryBuilder(Self),
 
         root: *Archetype,
 
@@ -92,7 +90,9 @@ pub fn World(comptime ComponentsTypes: anytype) type {
                 .root = archetypes.getRoot(),
             };
 
-            var queryBuilder = try QueryBuilder(@TypeOf(world)).init(options.allocator);
+            var queryBuilder = try QueryBuilder(Self).init(
+                options.allocator,
+            );
 
             world.queryBuilder = queryBuilder;
 
@@ -102,7 +102,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
         pub fn deinit(self: *Self) void {
             self.archetypes.deinit();
             self.entities.deinit();
-            // self.queryBuilder.deinit();
+            self.queryBuilder.deinit();
         }
 
         pub fn createEntity(self: *Self) Entity {
@@ -141,13 +141,15 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
         }
 
-        pub fn query(self: *Self) *QueryBuilder {
-            // Errrk ugly stuff
-            self.queryBuilder.world = self;
+        pub fn query(self: *Self) *QueryBuilder(Self) {
+            // Errrk so ugly
+            if (self.queryBuilder.world != self) {
+                self.queryBuilder.world = self;
+            }
             return &self.queryBuilder;
         }
 
-        fn getRegisteredComponent(comptime component: anytype) @TypeOf(@field(components, component.name)) {
+        pub fn getRegisteredComponent(comptime component: anytype) @TypeOf(@field(components, component.name)) {
             return comptime @field(components, component.name);
         }
 

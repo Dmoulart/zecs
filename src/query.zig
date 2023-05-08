@@ -7,7 +7,12 @@ const RawBitset = @import("./raw-bitset.zig").RawBitset;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
-pub const QueryMatcherType = enum { any, all, not, none };
+pub const QueryMatcherType = enum {
+    any,
+    all,
+    not,
+    none,
+};
 
 pub const Query = struct {
     const Self = @This();
@@ -78,8 +83,7 @@ pub const QueryMatcher = struct {
         };
     }
 };
-pub fn QueryBuilder(comptime WorldComponents: anytype) type {
-    _ = WorldComponents;
+pub fn QueryBuilder(comptime WorldType: anytype) type {
     return struct {
         const Self = @This();
 
@@ -87,10 +91,13 @@ pub fn QueryBuilder(comptime WorldComponents: anytype) type {
 
         matchers: std.ArrayList(QueryMatcher),
 
+        world: *WorldType,
+
         pub fn init(allocator: std.mem.Allocator) !Self {
             return Self{
                 .allocator = allocator,
                 .matchers = std.ArrayList(QueryMatcher).init(allocator),
+                .world = undefined,
             };
         }
 
@@ -98,37 +105,38 @@ pub fn QueryBuilder(comptime WorldComponents: anytype) type {
             self.matchers.deinit();
         }
 
-        pub fn any(self: *Self, data: anytype) *Self {
-            self.createMatcher(data, .any);
+        pub fn any(self: *Self, componentsTypes: anytype) *Self {
+            self.createMatcher(componentsTypes, .any);
             return self;
         }
 
-        pub fn all(self: *Self, data: anytype) *Self {
-            self.createMatcher(data, .all);
+        pub fn all(self: *Self, componentsTypes: anytype) *Self {
+            self.createMatcher(componentsTypes, .all);
             return self;
         }
         //
         // Select the archetypes which does not posess at least one of the components.
         //
-        pub fn not(self: *Self, data: anytype) *Self {
-            self.createMatcher(data, .not);
+        pub fn not(self: *Self, componentsTypes: anytype) *Self {
+            self.createMatcher(componentsTypes, .not);
             return self;
         }
         //
         // Select the archetypes which does not posess the entire set of component.
         //
-        pub fn none(self: *Self, data: anytype) *Self {
-            self.createMatcher(data, .none);
+        pub fn none(self: *Self, componentsTypes: anytype) *Self {
+            self.createMatcher(componentsTypes, .none);
             return self;
         }
 
-        fn createMatcher(self: *Self, data: anytype, matcher_type: QueryMatcherType) void {
-            const components = std.meta.fields(@TypeOf(data));
+        fn createMatcher(self: *Self, componentsTypes: anytype, matcher_type: QueryMatcherType) void {
+            const components = std.meta.fields(@TypeOf(componentsTypes));
 
             var mask = RawBitset.init(.{});
 
             inline for (components) |field| {
-                const component = @field(data, field.name);
+                const ComponentType = @field(componentsTypes, field.name);
+                var component = comptime WorldType.getRegisteredComponent(ComponentType);
                 mask.set(component.id);
             }
 
@@ -138,7 +146,7 @@ pub fn QueryBuilder(comptime WorldComponents: anytype) type {
             }) catch unreachable;
         }
 
-        pub fn from(self: *Self, world: anytype) Query {
+        pub fn execute(self: *Self) Query {
             var created_query = Query.init(
                 self.matchers.clone() catch unreachable,
                 self.allocator,
@@ -146,7 +154,7 @@ pub fn QueryBuilder(comptime WorldComponents: anytype) type {
 
             self.matchers.clearAndFree();
 
-            created_query.execute(world);
+            created_query.execute(self.world);
 
             return created_query;
         }
