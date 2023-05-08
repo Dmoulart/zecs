@@ -105,7 +105,7 @@ pub fn World(comptime ComponentsTypes: anytype) type {
             self.queryBuilder.deinit();
         }
 
-        pub fn createEntity(self: *Self) Entity {
+        pub fn createEmpty(self: *Self) Entity {
             return self.entities.create(self.archetypes.getRoot());
         }
 
@@ -245,7 +245,7 @@ test "Create attach and detach components" {
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator, .capacity = 10 });
     defer ecs.deinit();
 
-    var ent = ecs.createEntity();
+    var ent = ecs.createEmpty();
 
     ecs.attach(ent, Position);
     try expect(ecs.has(ent, Position));

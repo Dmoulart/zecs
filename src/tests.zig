@@ -23,7 +23,7 @@ test "Can create Entity" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
 
     try expect(ent == 1);
 }
@@ -37,7 +37,7 @@ test "Can remove Entity" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.deleteEntity(ent);
 
     try expect(!world.contains(ent));
@@ -55,14 +55,14 @@ test "Can resize" {
     });
     defer world.deinit();
 
-    _ = world.createEntity();
-    _ = world.createEntity();
-    _ = world.createEntity();
-    _ = world.createEntity();
+    _ = world.createEmpty();
+    _ = world.createEmpty();
+    _ = world.createEmpty();
+    _ = world.createEmpty();
 
     try expect(world.entities.capacity == 4);
 
-    _ = world.createEntity();
+    _ = world.createEmpty();
 
     try expect(world.entities.capacity == 4 * 2); // grow factor of 2?
 }
@@ -76,13 +76,13 @@ test "Can recycle Entity" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     try expect(world.contains(ent));
 
     world.deleteEntity(ent);
     try expect(!world.contains(ent));
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     try expect(ent2 == ent);
 }
 
@@ -101,7 +101,7 @@ test "Can attach component" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
 
     world.attach(ent, Position);
     try expect(world.has(ent, Position));
@@ -127,7 +127,7 @@ test "Can detach component" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
     world.attach(ent, Velocity);
 
@@ -157,7 +157,7 @@ test "Can generate archetype" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
 
     world.attach(ent, Position);
     var mask: RawBitset = world.archetypes.all.items[1].mask;
@@ -184,7 +184,7 @@ test "Query can target argetype" {
     });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
 
     world.attach(ent, Position);
 
@@ -209,10 +209,10 @@ test "Query update reactively" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Velocity);
 
     var query = world.query().all(.{Position}).execute();
@@ -249,8 +249,8 @@ test "Can query multiple components" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
-    var ent2 = world.createEntity();
+    var ent = world.createEmpty();
+    var ent2 = world.createEmpty();
 
     world.attach(ent, Position);
     world.attach(ent, Velocity);
@@ -290,11 +290,11 @@ test "Can iterate over query using iterator " {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
     world.attach(ent, Velocity);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
@@ -326,18 +326,18 @@ test "Can use the all query operator" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
     world.attach(ent, Velocity);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Position);
     world.attach(ent2, Velocity);
 
-    var ent3 = world.createEntity();
+    var ent3 = world.createEmpty();
     world.attach(ent3, Position);
 
-    var ent4 = world.createEntity();
+    var ent4 = world.createEmpty();
     world.attach(ent4, Velocity);
 
     var query = world.query().all(.{ Position, Velocity }).execute();
@@ -363,14 +363,14 @@ test "Can use the any query operator" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
     world.attach(ent, Velocity);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Position);
 
-    var ent3 = world.createEntity();
+    var ent3 = world.createEmpty();
     world.attach(ent3, Velocity);
 
     var result = world.query().any(.{ Position, Velocity }).execute();
@@ -392,14 +392,14 @@ test "Can use the not operator" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Position);
     world.attach(ent, Health);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Velocity);
 
-    var ent3 = world.createEntity();
+    var ent3 = world.createEmpty();
     world.attach(ent3, Position);
 
     var query = world.query().not(.{ Velocity, Health }).execute();
@@ -422,11 +422,11 @@ test "Can use the none operator" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Comp1);
     world.attach(ent, Comp2);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Comp3);
 
     var query = world.query().none(.{ Comp1, Comp2 }).execute();
@@ -454,19 +454,19 @@ test "Can combine query operators" {
     var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = 100 });
     defer world.deinit();
 
-    var ent = world.createEntity();
+    var ent = world.createEmpty();
     world.attach(ent, Comp1);
 
-    var ent2 = world.createEntity();
+    var ent2 = world.createEmpty();
     world.attach(ent2, Comp1);
     world.attach(ent2, Comp2);
     world.attach(ent2, Comp3);
 
-    var ent3 = world.createEntity();
+    var ent3 = world.createEmpty();
     world.attach(ent3, Comp3);
     world.attach(ent3, Comp4);
 
-    var ent4 = world.createEntity();
+    var ent4 = world.createEmpty();
     world.attach(ent4, Comp1);
     world.attach(ent4, Comp4);
 

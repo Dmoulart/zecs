@@ -11,77 +11,33 @@ const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
-const Position = Component("Position", struct {
-    x: f32,
-    y: f32,
-});
-const Velocity = Component("Velocity", struct {
-    x: f32,
-    y: f32,
-});
+const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
-const Ecs = World(.{
-    Position,
-    Velocity,
-});
-
-pub fn main() !void {
-    try bench();
-}
 // Benchmarks
-pub fn bench() !void {
-    run(createEntitiesWithTwoComponents);
-
-    run(createEntitiesWithTwoComponentsPrefab);
-
-    run(removeAndAddAComponent);
-
-    run(deleteEntities);
-}
-
-fn run(comptime function: anytype) void {
+pub fn main() !void {
     const thresholds: [5]u32 = [_]u32{ 16_000, 65_000, 262_000, 1_000_000, 2_000_000 };
+
     for (thresholds[0..thresholds.len]) |n| {
-        function(n) catch unreachable;
-    }
-}
-
-fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-
-    var world = try Ecs.init(.{
-        .allocator = arena.child_allocator,
-        .capacity = n,
-    });
-    defer world.deinit();
-
-    var i: u32 = 0;
-    std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nCreate {} entities with 2 comps with Prefab", .{n});
-    std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\n", .{});
-    var before = std.time.milliTimestamp();
-
-    const Actor = Ecs.Type(.{ Position, Velocity });
-    world.registerType(Actor);
-
-    while (i < n) : (i += 1) {
-        _ = world.create(Actor);
+        try createEntitiesWithTwoComponents(n);
     }
 
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    for (thresholds[0..thresholds.len]) |n| {
+        try removeAndAddAComponent(n);
+    }
+
+    for (thresholds[0..thresholds.len]) |n| {
+        try deleteEntities(n);
+    }
 }
 
 fn createEntitiesWithTwoComponents(n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -103,13 +59,19 @@ fn createEntitiesWithTwoComponents(n: u32) !void {
     std.debug.print("\nResults : {}ms", .{now - before});
     std.debug.print("\n", .{});
     std.debug.print("\n", .{});
+
+    var query = world.query().any(.{Position}).execute();
+    defer query.deinit();
 }
 
 fn removeAndAddAComponent(n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -138,13 +100,19 @@ fn removeAndAddAComponent(n: u32) !void {
     std.debug.print("\nResults : {}ms", .{now - before});
     std.debug.print("\n", .{});
     std.debug.print("\n", .{});
+
+    var query = world.query().any(.{Position}).execute();
+    defer query.deinit();
 }
 
 fn deleteEntities(n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    const Position = defineComponent(Vector);
+    const Velocity = defineComponent(Vector);
+
+    var world = try World.init(.{ .allocator = arena.child_allocator, .capacity = n });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -171,4 +139,7 @@ fn deleteEntities(n: u32) !void {
     std.debug.print("\nResults : {}ms", .{now - before});
     std.debug.print("\n", .{});
     std.debug.print("\n", .{});
+
+    var query = world.query().any(.{Position}).execute();
+    defer query.deinit();
 }
