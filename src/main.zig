@@ -33,6 +33,8 @@ pub fn bench() !void {
     run(removeAndAddAComponent);
 
     run(deleteEntities);
+
+    run(unpackTwoComponents);
 }
 
 fn run(comptime function: anytype) void {
@@ -56,6 +58,7 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
         .allocator = arena.child_allocator,
     });
     defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -89,6 +92,7 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
 
     var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -122,6 +126,7 @@ fn removeAndAddAComponent(comptime n: u32) !void {
 
     var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
 
     var i: u32 = 0;
 
@@ -162,6 +167,7 @@ fn deleteEntities(comptime n: u32) !void {
 
     var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -180,6 +186,46 @@ fn deleteEntities(comptime n: u32) !void {
     var before = std.time.milliTimestamp();
     while (i < n) : (i += 1) {
         _ = world.deleteEntity(i);
+    }
+
+    var now = std.time.milliTimestamp();
+    std.debug.print("\n", .{});
+    std.debug.print("\nResults : {}ms", .{now - before});
+    std.debug.print("\n", .{});
+    std.debug.print("\n", .{});
+}
+
+fn unpackTwoComponents(comptime n: u32) !void {
+    const Ecs = World(.{
+        Position,
+        Velocity,
+    }, n);
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
+
+    var i: u32 = 0;
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\nUnpack {} Entity", .{n});
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\n", .{});
+
+    while (i < n) : (i += 1) {
+        var ent = world.createEmpty();
+
+        world.attach(ent, Position);
+        world.attach(ent, Velocity);
+    }
+
+    var e: usize = 1;
+    var before = std.time.milliTimestamp();
+    while (e < n) : (e += 1) {
+        _ = world.get(e, Position);
+        _ = world.get(e, Velocity);
     }
 
     var now = std.time.milliTimestamp();

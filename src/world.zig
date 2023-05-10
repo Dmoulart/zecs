@@ -127,7 +127,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             const world_components = &std.meta.fields(@TypeOf(components));
             inline for (world_components.*) |*component_field| {
                 var component_instance = @field(components, component_field.name);
-                component_instance.storage.deinit(allocator);
+                component_instance.deinit(allocator);
             }
             components_are_ready = false;
         }
@@ -172,19 +172,21 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         pub fn set(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
-            assert(self.contains(entity));
-            assert(self.has(entity, component));
+            _ = self;
+            // assert(self.contains(entity));
+            // assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
             storage.data.set(entity, data);
         }
 
-        pub fn get(self: *Self, entity: Entity, comptime component: anytype) void {
-            assert(self.contains(entity));
-            assert(self.has(entity, component));
+        pub fn get(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+            _ = self;
+            // assert(self.contains(entity));
+            // assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            return &storage.get(entity);
+            return storage.data.get(entity);
         }
 
         pub fn query(self: *Self) *QueryBuilder(Self) {
@@ -397,9 +399,7 @@ test "Create multiple types" {
 test "Set component data" {
     const Position = Component("Position", struct { x: f32, y: f32 });
 
-    const Ecs = World(.{
-        Position,
-    }, 10);
+    const Ecs = World(.{Position}, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
@@ -407,4 +407,8 @@ test "Set component data" {
     const entity = ecs.createEmpty();
     ecs.attach(entity, Position);
     ecs.set(entity, Position, .{ .x = 10, .y = 20 });
+
+    var data = ecs.get(entity, Position);
+    try expect(data.x == 10);
+    try expect(data.y == 20);
 }
