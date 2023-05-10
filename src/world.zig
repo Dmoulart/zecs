@@ -111,9 +111,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     var component = &@field(components, component_field.name);
 
                     component.storage = ComponentStorage(@TypeOf(@field(components, component_field.name))){};
-
-                    _ = component.storage.ensureTotalCapacity(world.allocator, capacity) catch unreachable;
-                    _ = component.storage.data.resize(world.allocator, capacity) catch unreachable;
+                    component.storage.resize(world.allocator, capacity) catch unreachable;
 
                     components_are_ready = true;
                 }
@@ -162,13 +160,13 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(!self.has(entity, component));
 
-            self.toggleComponent(entity, Self.getComponentDefinition(component));
+            self.toggleComponent(entity, getComponentDefinition(component));
         }
 
         pub fn detach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(self.has(entity, component));
 
-            self.toggleComponent(entity, Self.getComponentDefinition(component));
+            self.toggleComponent(entity, getComponentDefinition(component));
         }
 
         pub fn set(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
@@ -177,7 +175,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             // assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            storage.data.set(entity, data);
+            storage.set(entity, data);
         }
 
         pub fn get(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
@@ -186,7 +184,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             // assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            return storage.data.get(entity);
+            return storage.get(entity);
         }
 
         pub fn query(self: *Self) *QueryBuilder(Self) {

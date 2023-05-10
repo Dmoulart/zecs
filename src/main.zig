@@ -35,6 +35,8 @@ pub fn bench() !void {
     run(deleteEntities);
 
     run(unpackTwoComponents);
+
+    run(unpackTwoComponentsPacked);
 }
 
 fn run(comptime function: anytype) void {
@@ -210,7 +212,7 @@ fn unpackTwoComponents(comptime n: u32) !void {
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nUnpack {} Entity", .{n});
+    std.debug.print("\nUnpack {} Entity Two Components", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 
@@ -223,9 +225,60 @@ fn unpackTwoComponents(comptime n: u32) !void {
 
     var e: usize = 1;
     var before = std.time.milliTimestamp();
+
     while (e < n) : (e += 1) {
         _ = world.get(e, Position);
         _ = world.get(e, Velocity);
+    }
+
+    var now = std.time.milliTimestamp();
+    std.debug.print("\n", .{});
+    std.debug.print("\nResults : {}ms", .{now - before});
+    std.debug.print("\n", .{});
+    std.debug.print("\n", .{});
+}
+
+fn unpackTwoComponentsPacked(comptime n: u32) !void {
+    const Pos = Component("Pos", struct { data: struct {
+        x: f32,
+        y: f32,
+    } });
+    const Vel = Component("Vel", struct { data: struct {
+        x: f32,
+        y: f32,
+    } });
+
+    const Ecs = World(.{
+        Pos,
+        Vel,
+    }, n);
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer world.deinit();
+    defer Ecs.contextDeinit(world.allocator);
+
+    var i: u32 = 0;
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\nUnpack {} Entity Two Packed Components", .{n});
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\n", .{});
+
+    while (i < n) : (i += 1) {
+        var ent = world.createEmpty();
+
+        world.attach(ent, Pos);
+        world.attach(ent, Vel);
+    }
+
+    var e: usize = 1;
+    var before = std.time.milliTimestamp();
+
+    while (e < n) : (e += 1) {
+        _ = world.get(e, Pos);
+        _ = world.get(e, Vel);
     }
 
     var now = std.time.milliTimestamp();
