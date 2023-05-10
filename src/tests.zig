@@ -15,7 +15,16 @@ const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const Vector = struct { x: f64 = 0, y: f64 = 0 };
 
 test "Can create Entity" {
-    const Ecs = World(.{}, 100);
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+
+    const Ecs = World(.{ Position, Velocity }, 100);
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -23,6 +32,7 @@ test "Can create Entity" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -31,7 +41,16 @@ test "Can create Entity" {
 }
 
 test "Can remove Entity" {
-    const Ecs = World(.{}, 100);
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+
+    const Ecs = World(.{ Position, Velocity }, 100);
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -39,6 +58,7 @@ test "Can remove Entity" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -48,7 +68,16 @@ test "Can remove Entity" {
 }
 
 test "Can resize" {
-    const Ecs = World(.{}, 4);
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+
+    const Ecs = World(.{ Position, Velocity }, 4);
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -56,6 +85,7 @@ test "Can resize" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     _ = world.createEmpty();
@@ -71,7 +101,16 @@ test "Can resize" {
 }
 
 test "Can recycle Entity" {
-    const Ecs = World(.{}, 100);
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+
+    const Ecs = World(.{ Position, Velocity }, 100);
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -79,6 +118,7 @@ test "Can recycle Entity" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -106,6 +146,7 @@ test "Can attach component" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -134,6 +175,7 @@ test "Can detach component" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -166,6 +208,7 @@ test "Can generate archetype" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -192,6 +235,7 @@ test "Query can target argetype" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -219,6 +263,7 @@ test "Query update reactively" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -261,6 +306,7 @@ test "Can query multiple components" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -304,6 +350,7 @@ test "Can iterate over query using iterator " {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -342,6 +389,7 @@ test "Can use the all query operator" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -381,6 +429,7 @@ test "Can use the any query operator" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -412,6 +461,7 @@ test "Can use the not operator" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -444,6 +494,7 @@ test "Can use the none operator" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();
@@ -478,6 +529,7 @@ test "Can combine query operators" {
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
+    defer Ecs.contextDeinit(world.allocator);
     defer world.deinit();
 
     var ent = world.createEmpty();

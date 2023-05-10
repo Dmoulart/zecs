@@ -105,38 +105,38 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             self.matchers.deinit();
         }
 
-        pub fn any(self: *Self, componentsTypes: anytype) *Self {
+        pub fn any(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .any);
             return self;
         }
 
-        pub fn all(self: *Self, componentsTypes: anytype) *Self {
+        pub fn all(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .all);
             return self;
         }
         //
         // Select the archetypes which does not posess at least one of the components.
         //
-        pub fn not(self: *Self, componentsTypes: anytype) *Self {
+        pub fn not(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .not);
             return self;
         }
         //
         // Select the archetypes which does not posess the entire set of component.
         //
-        pub fn none(self: *Self, componentsTypes: anytype) *Self {
+        pub fn none(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .none);
             return self;
         }
 
-        fn createMatcher(self: *Self, componentsTypes: anytype, matcher_type: QueryMatcherType) void {
-            const components = std.meta.fields(@TypeOf(componentsTypes));
+        fn createMatcher(self: *Self, comptime componentsTypes: anytype, matcher_type: QueryMatcherType) void {
+            const components = comptime std.meta.fields(@TypeOf(componentsTypes));
 
             var mask = RawBitset.init(.{});
 
             inline for (components) |field| {
-                const ComponentType = @field(componentsTypes, field.name);
-                var component = comptime WorldType.getRegisteredComponent(ComponentType);
+                const ComponentType = comptime @field(componentsTypes, field.name);
+                const component = comptime WorldType.getComponentDefinition(ComponentType);
                 mask.set(component.id);
             }
 

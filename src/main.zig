@@ -9,6 +9,7 @@ const World = @import("./world.zig").World;
 const Entity = @import("./world.zig").Entity;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
+const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 const Position = Component("Position", struct {
@@ -18,11 +19,6 @@ const Position = Component("Position", struct {
 const Velocity = Component("Velocity", struct {
     x: f32,
     y: f32,
-});
-
-const Ecs = World(.{
-    Position,
-    Velocity,
 });
 
 pub fn main() !void {
@@ -40,19 +36,24 @@ pub fn bench() !void {
 }
 
 fn run(comptime function: anytype) void {
-    const thresholds: [5]u32 = [_]u32{ 16_000, 65_000, 262_000, 1_000_000, 2_000_000 };
-    for (thresholds[0..thresholds.len]) |n| {
-        function(n) catch unreachable;
-    }
+    function(16_000) catch unreachable;
+    function(65_000) catch unreachable;
+    function(262_000) catch unreachable;
+    function(1_000_000) catch unreachable;
+    function(2_000_000) catch unreachable;
 }
 
-fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
+fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
+    const Ecs = World(.{
+        Position,
+        Velocity,
+    }, n);
+
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
     var world = try Ecs.init(.{
         .allocator = arena.child_allocator,
-        .capacity = n,
     });
     defer world.deinit();
 
@@ -77,11 +78,16 @@ fn createEntitiesWithTwoComponentsPrefab(n: u32) !void {
     std.debug.print("\n", .{});
 }
 
-fn createEntitiesWithTwoComponents(n: u32) !void {
+fn createEntitiesWithTwoComponents(comptime n: u32) !void {
+    const Ecs = World(.{
+        Position,
+        Velocity,
+    }, n);
+
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -105,11 +111,16 @@ fn createEntitiesWithTwoComponents(n: u32) !void {
     std.debug.print("\n", .{});
 }
 
-fn removeAndAddAComponent(n: u32) !void {
+fn removeAndAddAComponent(comptime n: u32) !void {
+    const Ecs = World(.{
+        Position,
+        Velocity,
+    }, n);
+
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
 
     var i: u32 = 0;
@@ -140,11 +151,16 @@ fn removeAndAddAComponent(n: u32) !void {
     std.debug.print("\n", .{});
 }
 
-fn deleteEntities(n: u32) !void {
+fn deleteEntities(comptime n: u32) !void {
+    const Ecs = World(.{
+        Position,
+        Velocity,
+    }, n);
+
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator, .capacity = n });
+    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer world.deinit();
 
     var i: u32 = 0;

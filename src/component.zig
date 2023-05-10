@@ -9,12 +9,39 @@ pub fn Component(comptime component_name: []const u8, comptime T: type) type {
 
         pub const name = component_name;
 
+        pub const Schema = T;
+
         id: ComponentId,
 
-        storage: std.MultiArrayList(T) = undefined,
+        storage: ComponentStorage(Self) = ComponentStorage(Self){},
+
+        ready: bool = false,
+        // storage: std.MultiArrayList(T) = std.MultiArrayList(T){},
+
+        pub fn ensureTotalCapacity(self: *Self, gpa: std.mem.Allocator, capacity: usize) !void {
+            try self.storage.ensureTotalCapacity(gpa, capacity);
+        }
+
+        // pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
+        //     self.storage.deinit(gpa);
+        // }
+    };
+}
+
+pub fn ComponentStorage(comptime component: anytype) type {
+    return struct {
+        const Self = @This();
+        // const component_id: ComponentId = component.id;
+        // const component_name: ComponentId = component.name;
+
+        data: std.MultiArrayList(component.Schema) = std.MultiArrayList(component.Schema){},
+
+        pub fn ensureTotalCapacity(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
+            try self.data.ensureTotalCapacity(gpa, capacity);
+        }
 
         pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
-            self.storage.deinit(gpa);
+            self.data.deinit(gpa);
         }
     };
 }

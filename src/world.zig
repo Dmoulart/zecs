@@ -3,10 +3,13 @@ const assert = @import("std").debug.assert;
 const expect = @import("std").testing.expect;
 
 const Component = @import("./component.zig").Component;
+const ComponentId = @import("./component.zig").ComponentId;
+const ComponentStorage = @import("./component.zig").ComponentStorage;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
+const SparseArray = @import("./sparse-array.zig").SparseArray;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
@@ -23,9 +26,9 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         var component_counter: u32 = 0;
 
         inline for (ComponentsTypesFields) |field| {
-            component_counter += 1;
             var ComponentType = @field(ComponentsTypes, field.name);
 
+            component_counter += 1;
             var component_instance = ComponentType{
                 .id = component_counter,
             };
@@ -33,7 +36,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = ComponentType.name[0..],
                 .field_type = ComponentType,
-                .is_comptime = true,
+                .is_comptime = false,
                 .alignment = @alignOf(ComponentType),
                 .default_value = &component_instance,
             }};
@@ -51,7 +54,14 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     return struct {
         const Self = @This();
 
+        // Comptime immutable components definitions
+        pub const components_definitions: WorldComponents = WorldComponents{};
+
+        // Runtime mutable components
         pub var components: WorldComponents = WorldComponents{};
+
+        // States the runtime components have been initialized
+        pub var components_are_ready = false;
 
         allocator: std.mem.Allocator,
 
@@ -59,18 +69,16 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         entities: EntityStorage,
 
-        queryBuilder: QueryBuilder(Self),
+        query_builder: QueryBuilder(Self),
 
         root: *Archetype,
 
         const WorldOptions = struct {
             allocator: std.mem.Allocator,
-
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
         pub fn init(options: WorldOptions) !Self {
-            // var capacity = options.capacity orelse DEFAULT_WORLD_CAPACITY;
             var archetypes_storage_capacity = options.archetypes_capacity;
 
             var archetypes = try ArchetypeStorage.init(.{
@@ -87,39 +95,47 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 .allocator = options.allocator,
                 .archetypes = archetypes,
                 .entities = entities,
-                .queryBuilder = undefined,
+                .query_builder = try QueryBuilder(Self).init(
+                    options.allocator,
+                ),
                 .root = archetypes.getRoot(),
             };
 
-            var queryBuilder = try QueryBuilder(Self).init(
-                options.allocator,
-            );
+            // Init context component
+            if (!components_are_ready) {
+                components = WorldComponents{};
 
-            world.queryBuilder = queryBuilder;
+                // Ensure components capacity
+                const world_components = &std.meta.fields(WorldComponents);
+                inline for (world_components.*) |*component_field| {
+                    var component = &@field(components, component_field.name);
 
-            // Ensure components capacity
-            // const world_components = comptime std.meta.fields(@TypeOf(components));
-            // inline for (world_components) |*component_field| {
-            //     var component_instance = comptime @field(components, component_field.name);
-            //     component_instance.storage.ensureTotalCapacity(world.allocator, capacity) catch unreachable;
-            // }
+                    component.storage = ComponentStorage(@TypeOf(@field(components, component_field.name))){};
+
+                    _ = component.storage.ensureTotalCapacity(world.allocator, capacity) catch unreachable;
+                    _ = component.storage.data.resize(world.allocator, capacity) catch unreachable;
+
+                    components_are_ready = true;
+                }
+            }
 
             return world;
         }
 
-        fn contextDeinit(allocator: std.mem.Allocator) void {
-            _ = allocator;
-            // const world_components = comptime std.meta.fields(@TypeOf(components));
-            // inline for (world_components) |*component_field| {
-            //     var component_instance = comptime @field(components, component_field.name);
-            //     component_instance.deinit(allocator);
-            // }
+        // Relation between components and world instance is not clear at all. Ultra footgun
+        pub fn contextDeinit(allocator: std.mem.Allocator) void {
+            const world_components = &std.meta.fields(@TypeOf(components));
+            inline for (world_components.*) |*component_field| {
+                var component_instance = @field(components, component_field.name);
+                component_instance.storage.deinit(allocator);
+            }
+            components_are_ready = false;
         }
 
         pub fn deinit(self: *Self) void {
             self.archetypes.deinit();
             self.entities.deinit();
-            self.queryBuilder.deinit();
+            self.query_builder.deinit();
         }
 
         pub fn createEmpty(self: *Self) Entity {
@@ -136,7 +152,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         pub fn has(self: *Self, entity: Entity, comptime component: anytype) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
-            return archetype.has(comptime Self.getRegisteredComponent(component).id);
+            return archetype.has(Self.getComponentDefinition(component).id);
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
@@ -146,25 +162,41 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(!self.has(entity, component));
 
-            self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
+            self.toggleComponent(entity, Self.getComponentDefinition(component));
         }
 
         pub fn detach(self: *Self, entity: Entity, comptime component: anytype) void {
             // assert(self.has(entity, component));
 
-            self.toggleComponent(entity, comptime Self.getRegisteredComponent(component));
+            self.toggleComponent(entity, Self.getComponentDefinition(component));
+        }
+
+        pub fn set(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            storage.data.set(entity, data);
+        }
+
+        pub fn get(self: *Self, entity: Entity, comptime component: anytype) void {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            return &storage.get(entity);
         }
 
         pub fn query(self: *Self) *QueryBuilder(Self) {
             // Errrk so ugly
-            if (self.queryBuilder.world != self) {
-                self.queryBuilder.world = self;
+            if (self.query_builder.world != self) {
+                self.query_builder.world = self;
             }
-            return &self.queryBuilder;
+            return &self.query_builder;
         }
 
-        pub fn getRegisteredComponent(comptime component: anytype) @TypeOf(@field(components, component.name)) {
-            return comptime @field(components, component.name);
+        pub fn getComponentDefinition(comptime component: anytype) @TypeOf(@field(components_definitions, component.name)) {
+            return comptime @field(components_definitions, component.name);
         }
 
         pub fn Type(comptime definition: anytype) type {
@@ -177,8 +209,8 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     var archetype = world.archetypes.getRoot();
 
                     inline for (definition_fields) |*field| {
-                        const ComponentType = comptime @field(definition, field.name);
-                        const component = comptime @field(components, ComponentType.name);
+                        const ComponentType = @field(definition, field.name);
+                        const component = @field(components, ComponentType.name);
 
                         if (archetype.edge.get(component.id)) |derived| {
                             archetype = derived;
@@ -308,18 +340,71 @@ test "Create type" {
     try expect(ecs.has(ent, Position));
     try expect(ecs.has(ent, Velocity));
     try expect(!ecs.has(ent, Rotation));
+}
 
-    // const world_components = comptime std.meta.fields(@TypeOf(Ecs.components));
-    // _ = world_components;
-    // var pos = @field(Ecs.components, "Position");
-    // var vel = @field(Ecs.components, "Velocity");
-    // var rot = @field(Ecs.components, "Rotation");
+test "Create multiple types" {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+    const Rotation = Component("Rotation", struct {
+        degrees: i8,
+    });
 
-    // pos.storage.deinit(ecs.allocator);
-    // vel.storage.deinit(ecs.allocator);
-    // rot.storage.deinit(ecs.allocator);
-    // inline for (world_components) |*component_field| {
-    //     var component_instance = comptime @field(Ecs.components, component_field.name);
-    //     component_instance.deinit(ecs.allocator);
-    // }
+    const Ecs = World(.{
+        Position,
+        Velocity,
+        Rotation,
+    }, 10);
+
+    const Actor = Ecs.Type(.{
+        Position,
+        Velocity,
+    });
+
+    const Body = Ecs.Type(.{
+        Position,
+        Velocity,
+        Rotation,
+    });
+
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    ecs.registerType(Actor);
+    ecs.registerType(Body);
+
+    const ent = ecs.create(Actor);
+
+    try expect(ent == 1);
+    try expect(ecs.has(ent, Position));
+    try expect(ecs.has(ent, Velocity));
+    try expect(!ecs.has(ent, Rotation));
+
+    const ent2 = ecs.create(Body);
+
+    try expect(ent2 == 2);
+    try expect(ecs.has(ent2, Position));
+    try expect(ecs.has(ent2, Velocity));
+    try expect(ecs.has(ent2, Rotation));
+}
+
+test "Set component data" {
+    const Position = Component("Position", struct { x: f32, y: f32 });
+
+    const Ecs = World(.{
+        Position,
+    }, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    const entity = ecs.createEmpty();
+    ecs.attach(entity, Position);
+    ecs.set(entity, Position, .{ .x = 10, .y = 20 });
 }
