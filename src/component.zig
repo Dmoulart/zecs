@@ -76,7 +76,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         cached_items: SchemaItems = undefined,
 
-        pub fn resize(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
+        pub fn setup(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
             _ = try self.data.ensureTotalCapacity(gpa, capacity);
             _ = try self.data.resize(gpa, capacity);
 

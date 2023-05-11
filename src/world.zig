@@ -111,7 +111,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     var component = &@field(components, component_field.name);
 
                     component.storage = ComponentStorage(@TypeOf(@field(components, component_field.name))){};
-                    component.storage.resize(world.allocator, capacity) catch unreachable;
+                    component.storage.setup(world.allocator, capacity) catch unreachable;
 
                     components_are_ready = true;
                 }
@@ -423,4 +423,20 @@ test "Replace component data" {
     var data = ecs.unpack(entity, Position);
     try expect(data.x == 10);
     try expect(data.y == 20);
+}
+
+test "Set component prop" {
+    const Position = Component("Position", struct { x: f32, y: f32 });
+
+    const Ecs = World(.{Position}, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    const entity = ecs.createEmpty();
+    ecs.attach(entity, Position);
+    ecs.set(entity, Position, "x", 10);
+
+    var x = ecs.get(entity, Position, "x");
+    try expect(x.* == 10);
 }
