@@ -158,33 +158,47 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
-            // assert(!self.has(entity, component));
+            assert(!self.has(entity, component));
 
             self.toggleComponent(entity, getComponentDefinition(component));
         }
 
         pub fn detach(self: *Self, entity: Entity, comptime component: anytype) void {
-            // assert(self.has(entity, component));
+            assert(self.has(entity, component));
 
             self.toggleComponent(entity, getComponentDefinition(component));
         }
 
-        pub fn set(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
-            _ = self;
-            // assert(self.contains(entity));
-            // assert(self.has(entity, component));
+        pub fn replace(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            storage.set(entity, data);
+            storage.replace(entity, data);
         }
 
-        pub fn get(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
-            _ = self;
-            // assert(self.contains(entity));
-            // assert(self.has(entity, component));
+        pub fn set(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype, data: anytype) void {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            return storage.get(entity);
+            storage.set(entity, prop, data);
+        }
+
+        pub fn get(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype) *@TypeOf(@field(ComponentStorage(component).schema_instance, prop)) {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            return storage.get(entity, prop);
+        }
+
+        pub fn unpack(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            return storage.unpack(entity);
         }
 
         pub fn query(self: *Self) *QueryBuilder(Self) {
@@ -394,7 +408,7 @@ test "Create multiple types" {
     try expect(ecs.has(ent2, Rotation));
 }
 
-test "Set component data" {
+test "Replace component data" {
     const Position = Component("Position", struct { x: f32, y: f32 });
 
     const Ecs = World(.{Position}, 10);
@@ -404,9 +418,9 @@ test "Set component data" {
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, Position);
-    ecs.set(entity, Position, .{ .x = 10, .y = 20 });
+    ecs.replace(entity, Position, .{ .x = 10, .y = 20 });
 
-    var data = ecs.get(entity, Position);
+    var data = ecs.unpack(entity, Position);
     try expect(data.x == 10);
     try expect(data.y == 20);
 }

@@ -227,8 +227,8 @@ fn unpackTwoComponents(comptime n: u32) !void {
     var before = std.time.milliTimestamp();
 
     while (e < n) : (e += 1) {
-        _ = world.get(e, Position);
-        _ = world.get(e, Velocity);
+        _ = world.unpack(e, Position);
+        _ = world.unpack(e, Velocity);
     }
 
     var now = std.time.milliTimestamp();
@@ -239,14 +239,14 @@ fn unpackTwoComponents(comptime n: u32) !void {
 }
 
 fn unpackTwoComponentsPacked(comptime n: u32) !void {
-    const Pos = Component("Pos", struct { data: struct {
+    const Pos = Component("Pos", struct {
         x: f32,
         y: f32,
-    } });
-    const Vel = Component("Vel", struct { data: struct {
+    });
+    const Vel = Component("Vel", struct {
         x: f32,
         y: f32,
-    } });
+    });
 
     const Ecs = World(.{
         Pos,
@@ -277,8 +277,8 @@ fn unpackTwoComponentsPacked(comptime n: u32) !void {
     var before = std.time.milliTimestamp();
 
     while (e < n) : (e += 1) {
-        _ = world.get(e, Pos);
-        _ = world.get(e, Vel);
+        _ = world.get(e, Pos, "x");
+        _ = world.get(e, Vel, "x");
     }
 
     var now = std.time.milliTimestamp();

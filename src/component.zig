@@ -30,7 +30,6 @@ pub fn Component(comptime component_name: []const u8, comptime T: type) type {
 
 pub fn ComponentStorage(comptime component: anytype) type {
     const ComponentsSchemaFields = std.meta.fields(component.Schema);
-    // _ = ComponentsSchemaFields;
 
     const SchemaItems = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
@@ -62,6 +61,9 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         const Schema = component.Schema;
 
+        // used to get type infos more easily.. remove when better at zig meta programming
+        pub const schema_instance: component.Schema = undefined;
+
         const ComponentMultiArrayList = std.MultiArrayList(component.Schema);
 
         pub const Field = std.meta.FieldEnum(component.Schema);
@@ -85,55 +87,30 @@ pub fn ComponentStorage(comptime component: anytype) type {
             }
         }
 
-        // /// Overwrite one array element with new data.
-        // pub fn set(self: *Self, index: usize, elem: S) void {
-        //     const slices = self.slice();
-        //     inline for (fields) |field_info, i| {
-        //         slices.items(@intToEnum(Field, i))[index] = @field(elem, field_info.name);
-        //     }
-        // }
-
-        // /// Obtain all the data for one array element.
-        // pub fn get(self: Self, index: usize) S {
-        //     const slices = self.slice();
-        //     var result: S = undefined;
-        //     inline for (fields) |field_info, i| {
-        //         @field(result, field_info.name) = slices.items(@intToEnum(Field, i))[index];
-        //     }
-        //     return result;
-        // }
-
-        pub fn get(self: *Self, entity: Entity) Schema {
+        pub fn unpack(self: *Self, entity: Entity) Schema {
             var result: Schema = undefined;
             inline for (fields) |field_info| {
-                // @field(result, field_info.name) = self.cached_slice.items(@intToEnum(Field, i))[entity];
                 @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }
             return result;
-            // return self.data.get(entity);
         }
 
-        pub fn set(self: *Self, entity: Entity, data: Schema) void {
+        pub fn get(self: *Self, entity: Entity, comptime prop: anytype) *@TypeOf(@field(schema_instance, prop)) {
+            return &@field(self.cached_items, prop)[entity];
+        }
+
+        pub fn replace(self: *Self, entity: Entity, data: Schema) void {
             inline for (fields) |field_info, i| {
                 self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
             }
+        }
 
-            // self.data.set(entity, data);
+        pub fn set(self: *Self, entity: Entity, comptime prop: anytype, data: anytype) void {
+            @field(self.cached_items, prop)[entity] = data;
         }
 
         pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
             self.data.deinit(gpa);
         }
-
-        // fn FieldType(comptime field: Field) type {
-        //     return std.meta.fieldInfo(component.Schema, field).field_type;
-        // }
-
-        // fn FieldsTypesSlices(comptime field: Field) type {
-        //     inline for (fields) |field_info, i| {
-
-        //     }
-        //     return meta.fieldInfo(S, field).field_type;
-        // }
     };
 }
