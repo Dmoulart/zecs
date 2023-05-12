@@ -173,20 +173,20 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.toggleComponent(entity, getComponentDefinition(component));
         }
 
+        pub fn read(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            return storage.read(entity);
+        }
+
         pub fn write(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
             storage.write(entity, data);
-        }
-
-        pub fn set(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype, data: anytype) void {
-            assert(self.contains(entity));
-            assert(self.has(entity, component));
-
-            var storage = comptime @field(components, component.name).storage;
-            storage.set(entity, prop, data);
         }
 
         pub fn get(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype) *@TypeOf(@field(ComponentStorage(component).schema_instance, prop)) {
@@ -197,12 +197,12 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.get(entity, prop);
         }
 
-        pub fn unpack(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+        pub fn set(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype, data: anytype) void {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            return storage.unpack(entity);
+            storage.set(entity, prop, data);
         }
 
         pub fn query(self: *Self) *QueryBuilder(Self) {
@@ -434,7 +434,7 @@ test "write component data" {
     ecs.attach(entity, Position);
     ecs.write(entity, Position, .{ .x = 10, .y = 20 });
 
-    var data = ecs.unpack(entity, Position);
+    var data = ecs.read(entity, Position);
     try expect(data.x == 10);
     try expect(data.y == 20);
 }
@@ -454,36 +454,3 @@ test "Set component prop" {
     var x = ecs.get(entity, Position, "x");
     try expect(x.* == 10);
 }
-
-// test "Use systems" {
-//     const Position = Component("Position", struct { x: f32, y: f32 });
-//     const Velocity = Component("Velocity", struct { x: f32, y: f32 });
-//     _ = Velocity;
-
-//     const MySystem = struct {
-//         fn move(world: *World) void {
-//             var query = world.query().all(.{Position}).execute();
-//             defer query.deinit();
-
-//             var iterator = query.iterator();
-//             var counter: i32 = 0;
-
-//             while (iterator.next()) |_| {
-//                 counter += 1;
-//             }
-//         }
-//     };
-//     _ = MySystem;
-
-//     const Ecs = World(.{Position}, 10);
-//     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
-//     defer ecs.deinit();
-//     defer Ecs.contextDeinit(ecs.allocator);
-
-//     const entity = ecs.createEmpty();
-//     ecs.attach(entity, Position);
-//     ecs.set(entity, Position, "x", 10);
-
-//     var x = ecs.get(entity, Position, "x");
-//     try expect(x.* == 10);
-// }

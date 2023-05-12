@@ -87,7 +87,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
             }
         }
 
-        pub fn unpack(self: *Self, entity: Entity) Schema {
+        pub fn read(self: *Self, entity: Entity) Schema {
             var result: Schema = undefined;
             inline for (fields) |field_info| {
                 @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
@@ -101,6 +101,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         pub fn write(self: *Self, entity: Entity, data: Schema) void {
             inline for (fields) |field_info, i| {
+                // Todo use the cached items
                 self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
             }
         }

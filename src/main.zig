@@ -34,9 +34,9 @@ pub fn bench() !void {
 
     run(deleteEntities);
 
-    run(unpackTwoComponents);
+    run(readTwoComponents);
 
-    run(unpackTwoComponentsProp);
+    run(readTwoComponentsProp);
 }
 
 fn run(comptime function: anytype) void {
@@ -181,7 +181,7 @@ fn deleteEntities(comptime n: u32) !void {
     Timer.end();
 }
 
-fn unpackTwoComponents(comptime n: u32) !void {
+fn readTwoComponents(comptime n: u32) !void {
     const Ecs = World(.{
         Position,
         Velocity,
@@ -196,7 +196,7 @@ fn unpackTwoComponents(comptime n: u32) !void {
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nUnpack {} Entity Two Components", .{n});
+    std.debug.print("\nread {} Entity Two Components", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 
@@ -217,9 +217,9 @@ fn unpackTwoComponents(comptime n: u32) !void {
 
     Timer.start();
     while (e < n) : (e += 1) {
-        var pos = world.unpack(e, Position);
+        var pos = world.read(e, Position);
 
-        var vel = world.unpack(e, Velocity);
+        var vel = world.read(e, Velocity);
         _ = vel;
         // If we are not doing this the compiler will remove the loop in releas fast builds
         result += pos.x;
@@ -229,7 +229,7 @@ fn unpackTwoComponents(comptime n: u32) !void {
     std.debug.print("res {}", .{result});
 }
 
-fn unpackTwoComponentsProp(comptime n: u32) !void {
+fn readTwoComponentsProp(comptime n: u32) !void {
     const Pos = Component("Pos", struct {
         x: f32,
         y: f32,
@@ -253,7 +253,7 @@ fn unpackTwoComponentsProp(comptime n: u32) !void {
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nUnpack {} Entity Two Components Prop", .{n});
+    std.debug.print("\nread {} Entity Two Components Prop", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 

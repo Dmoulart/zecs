@@ -192,31 +192,3 @@ pub const QueryIterator = struct {
         return len;
     }
 };
-
-// fn numMasks(bit_length: usize) usize {
-//     return (bit_length + (@bitSizeOf(std.bit_set.DynamicBitSet.MaskInt) - 1)) / @bitSizeOf(std.bit_set.DynamicBitSet.MaskInt);
-// }
-
-// fn contains(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-//     const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
-
-//     for (bitset.unmanaged.masks[0..len], 0..) |*mask, i| {
-//         if (mask.* & other.unmanaged.masks[i] != mask.*) {
-//             return false;
-//         }
-//     }
-
-//     return true;
-// }
-
-// fn intersects(bitset: *const std.bit_set.DynamicBitSet, other: *std.bit_set.DynamicBitSet) bool {
-//     const len = @min(numMasks(bitset.unmanaged.bit_length), numMasks(other.unmanaged.bit_length));
-
-//     for (bitset.unmanaged.masks[0..len], 0..) |*mask, i| {
-//         if (mask.* & other.unmanaged.masks[i] > 0) {
-//             return true;
-//         }
-//     }
-
-//     return false;
-// }
