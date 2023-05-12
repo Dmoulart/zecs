@@ -14,6 +14,7 @@ const QueryBuilder = @import("./query.zig").QueryBuilder;
 const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
+const System = @import("./system.zig").System;
 
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
@@ -69,6 +70,8 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         entities: EntityStorage,
 
+        // systems: std.ArrayList(*System),
+
         query_builder: QueryBuilder(Self),
 
         root: *Archetype,
@@ -99,6 +102,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     options.allocator,
                 ),
                 .root = archetypes.getRoot(),
+                // .systems = std.ArrayList(*System).init(options.allocator),
             };
 
             // Init context component
@@ -150,7 +154,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         pub fn has(self: *Self, entity: Entity, comptime component: anytype) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
-            return archetype.has(Self.getComponentDefinition(component).id);
+            return archetype.has(comptime getComponentDefinition(component).id);
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
@@ -207,6 +211,16 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 self.query_builder.world = self;
             }
             return &self.query_builder;
+        }
+
+        pub fn addSystem(self: *Self, system: System) void {
+            self.systems.append(system);
+        }
+
+        pub fn step(self: *Self) void {
+            for (self.systems.items) |*system| {
+                system(self);
+            }
         }
 
         pub fn getComponentDefinition(comptime component: anytype) @TypeOf(@field(components_definitions, component.name)) {
@@ -440,3 +454,36 @@ test "Set component prop" {
     var x = ecs.get(entity, Position, "x");
     try expect(x.* == 10);
 }
+
+// test "Use systems" {
+//     const Position = Component("Position", struct { x: f32, y: f32 });
+//     const Velocity = Component("Velocity", struct { x: f32, y: f32 });
+//     _ = Velocity;
+
+//     const MySystem = struct {
+//         fn move(world: *World) void {
+//             var query = world.query().all(.{Position}).execute();
+//             defer query.deinit();
+
+//             var iterator = query.iterator();
+//             var counter: i32 = 0;
+
+//             while (iterator.next()) |_| {
+//                 counter += 1;
+//             }
+//         }
+//     };
+//     _ = MySystem;
+
+//     const Ecs = World(.{Position}, 10);
+//     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+//     defer ecs.deinit();
+//     defer Ecs.contextDeinit(ecs.allocator);
+
+//     const entity = ecs.createEmpty();
+//     ecs.attach(entity, Position);
+//     ecs.set(entity, Position, "x", 10);
+
+//     var x = ecs.get(entity, Position, "x");
+//     try expect(x.* == 10);
+// }

@@ -62,25 +62,22 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     defer world.deinit();
     defer Ecs.contextDeinit(world.allocator);
 
+    const Actor = Ecs.Type(.{ Position, Velocity });
+    world.registerType(Actor);
+
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\nCreate {} entities with 2 comps with Prefab", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
-    var before = std.time.milliTimestamp();
 
-    const Actor = Ecs.Type(.{ Position, Velocity });
-    world.registerType(Actor);
+    Timer.start();
 
     while (i < n) : (i += 1) {
         _ = world.create(Actor);
     }
 
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
 
 fn createEntitiesWithTwoComponents(comptime n: u32) !void {
@@ -101,7 +98,7 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     std.debug.print("\nCreate {} entities with 2 comps", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
-    var before = std.time.milliTimestamp();
+    Timer.start();
 
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
@@ -110,11 +107,7 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
         world.attach(ent, &Velocity);
     }
 
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
 
 fn removeAndAddAComponent(comptime n: u32) !void {
@@ -145,17 +138,13 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     }
 
     i = 1;
-    var before = std.time.milliTimestamp();
+
+    Timer.start();
     while (i < n) : (i += 1) {
         world.detach(i, Position);
         world.attach(i, Position);
     }
-
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
 
 fn deleteEntities(comptime n: u32) !void {
@@ -185,16 +174,11 @@ fn deleteEntities(comptime n: u32) !void {
     }
 
     i = 1;
-    var before = std.time.milliTimestamp();
+    Timer.start();
     while (i < n) : (i += 1) {
         _ = world.deleteEntity(i);
     }
-
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
 
 fn unpackTwoComponents(comptime n: u32) !void {
@@ -224,18 +208,13 @@ fn unpackTwoComponents(comptime n: u32) !void {
     }
 
     var e: usize = 1;
-    var before = std.time.milliTimestamp();
 
+    Timer.start();
     while (e < n) : (e += 1) {
         _ = world.unpack(e, Position);
         _ = world.unpack(e, Velocity);
     }
-
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
 
 fn unpackTwoComponentsPacked(comptime n: u32) !void {
@@ -274,16 +253,30 @@ fn unpackTwoComponentsPacked(comptime n: u32) !void {
     }
 
     var e: usize = 1;
-    var before = std.time.milliTimestamp();
+    Timer.start();
 
     while (e < n) : (e += 1) {
         _ = world.get(e, Pos, "x");
         _ = world.get(e, Vel, "x");
     }
 
-    var now = std.time.milliTimestamp();
-    std.debug.print("\n", .{});
-    std.debug.print("\nResults : {}ms", .{now - before});
-    std.debug.print("\n", .{});
-    std.debug.print("\n", .{});
+    Timer.end();
 }
+
+const Timer = struct {
+    pub var before: i64 = 0;
+    pub var after: i64 = 0;
+
+    pub fn start() void {
+        before = std.time.milliTimestamp();
+    }
+
+    pub fn end() void {
+        after = std.time.milliTimestamp();
+
+        std.debug.print("\n", .{});
+        std.debug.print("\nResults : {}ms", .{after - before});
+        std.debug.print("\n", .{});
+        std.debug.print("\n", .{});
+    }
+};
