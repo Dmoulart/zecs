@@ -99,7 +99,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
             return &@field(self.cached_items, prop)[entity];
         }
 
-        pub fn replace(self: *Self, entity: Entity, data: Schema) void {
+        pub fn write(self: *Self, entity: Entity, data: Schema) void {
             inline for (fields) |field_info, i| {
                 self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
             }

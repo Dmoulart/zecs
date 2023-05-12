@@ -173,12 +173,12 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.toggleComponent(entity, getComponentDefinition(component));
         }
 
-        pub fn replace(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
+        pub fn write(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
             var storage = comptime @field(components, component.name).storage;
-            storage.replace(entity, data);
+            storage.write(entity, data);
         }
 
         pub fn set(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype, data: anytype) void {
@@ -422,7 +422,7 @@ test "Create multiple types" {
     try expect(ecs.has(ent2, Rotation));
 }
 
-test "Replace component data" {
+test "write component data" {
     const Position = Component("Position", struct { x: f32, y: f32 });
 
     const Ecs = World(.{Position}, 10);
@@ -432,7 +432,7 @@ test "Replace component data" {
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, Position);
-    ecs.replace(entity, Position, .{ .x = 10, .y = 20 });
+    ecs.write(entity, Position, .{ .x = 10, .y = 20 });
 
     var data = ecs.unpack(entity, Position);
     try expect(data.x == 10);

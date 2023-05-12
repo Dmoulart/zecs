@@ -36,7 +36,7 @@ pub fn bench() !void {
 
     run(unpackTwoComponents);
 
-    run(unpackTwoComponentsPacked);
+    run(unpackTwoComponentsProp);
 }
 
 fn run(comptime function: anytype) void {
@@ -209,15 +209,27 @@ fn unpackTwoComponents(comptime n: u32) !void {
 
     var e: usize = 1;
 
+    var ent = world.createEmpty();
+    world.attach(ent, Position);
+    world.attach(ent, Velocity);
+
+    var result: f128 = 0;
+
     Timer.start();
     while (e < n) : (e += 1) {
-        _ = world.unpack(e, Position);
-        _ = world.unpack(e, Velocity);
+        var pos = world.unpack(e, Position);
+
+        var vel = world.unpack(e, Velocity);
+        _ = vel;
+        // If we are not doing this the compiler will remove the loop in releas fast builds
+        result += pos.x;
     }
     Timer.end();
+
+    std.debug.print("res {}", .{result});
 }
 
-fn unpackTwoComponentsPacked(comptime n: u32) !void {
+fn unpackTwoComponentsProp(comptime n: u32) !void {
     const Pos = Component("Pos", struct {
         x: f32,
         y: f32,
@@ -241,7 +253,7 @@ fn unpackTwoComponentsPacked(comptime n: u32) !void {
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nUnpack {} Entity Two Packed Components", .{n});
+    std.debug.print("\nUnpack {} Entity Two Components Prop", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 
@@ -249,15 +261,29 @@ fn unpackTwoComponentsPacked(comptime n: u32) !void {
         var ent = world.createEmpty();
 
         world.attach(ent, Pos);
+        world.write(
+            ent,
+            Pos,
+            .{ .x = @intToFloat(f32, i), .y = @intToFloat(f32, i + 1) },
+        );
+
         world.attach(ent, Vel);
+        world.write(
+            ent,
+            Vel,
+            .{ .x = @intToFloat(f32, i), .y = @intToFloat(f32, i + 1) },
+        );
     }
 
     var e: usize = 1;
+    var result: f128 = 0;
     Timer.start();
 
     while (e < n) : (e += 1) {
-        _ = world.get(e, Pos, "x");
-        _ = world.get(e, Vel, "x");
+        var pos = world.get(e, Pos, "x");
+        result += pos.*;
+        var vel = world.get(e, Vel, "x");
+        _ = vel;
     }
 
     Timer.end();
@@ -267,15 +293,31 @@ const Timer = struct {
     pub var before: i64 = 0;
     pub var after: i64 = 0;
 
+    pub var nano_before: i128 = 0;
+    pub var nano_after: i128 = 0;
+
     pub fn start() void {
         before = std.time.milliTimestamp();
+    }
+
+    pub fn nanoStart() void {
+        nano_before = std.time.nanoTimestamp();
     }
 
     pub fn end() void {
         after = std.time.milliTimestamp();
 
         std.debug.print("\n", .{});
-        std.debug.print("\nResults : {}ms", .{after - before});
+        std.debug.print("\nResults : {} ms", .{after - before});
+        std.debug.print("\n", .{});
+        std.debug.print("\n", .{});
+    }
+
+    pub fn nanoEnd() void {
+        nano_after = std.time.nanoTimestamp();
+
+        std.debug.print("\n", .{});
+        std.debug.print("\nResults : {} ns", .{nano_after - nano_before});
         std.debug.print("\n", .{});
         std.debug.print("\n", .{});
     }
