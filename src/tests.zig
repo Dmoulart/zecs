@@ -243,7 +243,7 @@ test "Query can target argetype" {
     world.attach(ent, Position);
 
     var query = world.query().any(.{Position}).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     try expect(query.archetypes.items[0] == &world.archetypes.all.items[1]);
 }
@@ -273,7 +273,7 @@ test "Query update reactively" {
     world.attach(ent2, Velocity);
 
     var query = world.query().all(.{Position}).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     try expect(query.has(ent));
     try expect(!query.has(ent2));
@@ -318,7 +318,7 @@ test "Can query multiple components" {
     world.attach(ent2, Position);
 
     var query = world.query().all(.{ Position, Velocity }).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     try expect(query.has(ent));
     try expect(!query.has(ent2));
@@ -362,7 +362,7 @@ test "Can iterate over query using iterator " {
     world.attach(ent2, Velocity);
 
     var query = world.query().all(.{ Position, Velocity }).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     var iterator = query.iterator();
     var counter: i32 = 0;
@@ -407,7 +407,7 @@ test "Can use the all query operator" {
     world.attach(ent4, Velocity);
 
     var query = world.query().all(.{ Position, Velocity }).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     // try expect(query.archetypes.items.len == 1);
     try expect(query.has(ent));
@@ -475,7 +475,7 @@ test "Can use the not operator" {
     world.attach(ent3, Position);
 
     var query = world.query().not(.{ Velocity, Health }).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     // Take into account the root archetype
     try expect(query.archetypes.items.len == 2);
@@ -505,7 +505,7 @@ test "Can use the none operator" {
     world.attach(ent2, Comp3);
 
     var query = world.query().none(.{ Comp1, Comp2 }).execute();
-    defer query.deinit();
+    // defer query.deinit();
 
     try expect(!query.has(ent));
 }
@@ -554,7 +554,7 @@ test "Can combine query operators" {
         .none(.{ Comp1, Comp4 })
         .execute();
 
-    defer query.deinit();
+    // defer query.deinit();
 
     try expect(query.has(ent));
     try expect(!query.has(ent2));

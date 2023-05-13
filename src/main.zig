@@ -22,7 +22,37 @@ const Velocity = Component("Velocity", struct {
 });
 
 pub fn main() !void {
-    try bench();
+    // const Position = Component("Position", struct { x: f32, y: f32 });
+    // const Velocity = Component("Velocity", struct { x: f32, y: f32 });
+
+    const Ecs = World(.{ Position, Velocity }, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    const entity = ecs.createEmpty();
+    _ = entity;
+
+    var query_ptr_1 = ecs.query().any(.{Position}).execute();
+    std.debug.print("\n query 1", .{});
+    _ = query_ptr_1;
+    var query_ptr_2 = ecs.query().any(.{Position}).execute();
+    std.debug.print("\n query 2", .{});
+    _ = query_ptr_2;
+
+    // try expect(query_ptr_1 == query_ptr_2);
+    // try expect(ecs.query_builder.queries.count() == 1);
+
+    var query_b_ptr_1 = ecs.query().any(.{ Position, Velocity }).execute();
+    std.debug.print("\n query 3", .{});
+    _ = query_b_ptr_1;
+    var query_b_ptr_2 = ecs.query().any(.{ Position, Velocity }).execute();
+    std.debug.print("\n query 4", .{});
+    _ = query_b_ptr_2;
+
+    // try expect(query_b_ptr_1 == query_b_ptr_2);
+    // try expect(ecs.query_builder.queries.count() == 2);
+    // try bench();
 }
 
 pub fn bench() !void {

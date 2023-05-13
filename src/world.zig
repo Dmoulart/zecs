@@ -135,9 +135,9 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         pub fn deinit(self: *Self) void {
+            self.query_builder.deinit();
             self.archetypes.deinit();
             self.entities.deinit();
-            self.query_builder.deinit();
         }
 
         pub fn createEmpty(self: *Self) Entity {
@@ -453,4 +453,32 @@ test "Set component prop" {
 
     var x = ecs.get(entity, Position, "x");
     try expect(x.* == 10);
+}
+
+test "Queries are cached" {
+    const Position = Component("Position", struct { x: f32, y: f32 });
+    const Velocity = Component("Velocity", struct { x: f32, y: f32 });
+    const Health = Component("Health", struct { points: u32 });
+
+    const Ecs = World(.{ Position, Velocity, Health }, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    var query_a_1 = ecs.query().any(.{Position}).execute();
+    var query_a_2 = ecs.query().any(.{Position}).execute();
+
+    try expect(query_a_1 == query_a_2);
+    try expect(ecs.query_builder.queries.count() == 1);
+
+    var query_b_1 = ecs.query().any(.{ Position, Velocity }).execute();
+    var query_b_2 = ecs.query().any(.{ Position, Velocity }).execute();
+
+    try expect(query_b_1 == query_b_2);
+    try expect(ecs.query_builder.queries.count() == 2);
+
+    var query_c_1 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
+    var query_c_2 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
+    try expect(query_c_1 == query_c_2);
+    try expect(ecs.query_builder.queries.count() == 3);
 }

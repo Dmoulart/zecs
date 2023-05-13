@@ -3,7 +3,9 @@ const print = @import("std").debug.print;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
 const Entity = @import("./entity-storage.zig").Entity;
+const ComponentId = @import("./component.zig").ComponentId;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
+const String = @import("./string.zig").String;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
@@ -13,6 +15,8 @@ pub const QueryMatcherType = enum {
     not,
     none,
 };
+
+pub const QueryHash = String;
 
 pub const Query = struct {
     const Self = @This();
@@ -38,11 +42,9 @@ pub const Query = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.archetypes.deinit();
         for (self.matchers.items) |*matcher| {
             matcher.deinit();
         }
-        self.matchers.deinit();
     }
 
     fn execute(self: *Self, world: anytype) void {
@@ -68,7 +70,9 @@ pub const Query = struct {
 
 pub const QueryMatcher = struct {
     const Self = @This();
+
     op_type: QueryMatcherType,
+
     mask: RawBitset,
 
     pub fn deinit(self: *Self) void {
@@ -83,89 +87,139 @@ pub const QueryMatcher = struct {
         };
     }
 };
+
 pub fn QueryBuilder(comptime WorldType: anytype) type {
     return struct {
         const Self = @This();
 
         allocator: std.mem.Allocator,
 
-        matchers: std.ArrayList(QueryMatcher),
+        prepared_query_matchers: std.ArrayList(QueryMatcher),
+
+        // Todo: make comptime string ds
+        prepared_query_hash: String,
+
+        queries: std.hash_map.StringHashMap(Query),
 
         world: *WorldType,
 
         pub fn init(allocator: std.mem.Allocator) !Self {
+            var prepared_query_hash = String.init(allocator);
+            prepared_query_hash.allocate(100) catch unreachable;
             return Self{
                 .allocator = allocator,
-                .matchers = std.ArrayList(QueryMatcher).init(allocator),
+                .prepared_query_matchers = std.ArrayList(QueryMatcher).init(allocator),
+                .queries = std.hash_map.StringHashMap(Query).init(allocator),
                 .world = undefined,
+                .prepared_query_hash = prepared_query_hash,
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.matchers.deinit();
-        }
+            self.prepared_query_matchers.deinit();
+            var queries = self.queries.valueIterator();
+            while (queries.next()) |query| {
+                // The archetypes and matchers need to be freed from query builder I don't know why.
+                query.archetypes.deinit();
+                query.matchers.deinit();
 
+                query.deinit();
+            }
+            self.queries.deinit();
+            self.prepared_query_hash.deinit();
+        }
+        //
+        // Select the archetypes which posess at least one of the given components.
+        //
         pub fn any(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .any);
             return self;
         }
-
+        //
+        // Select the archetypes which posess the entire set of given component.
+        //
         pub fn all(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .all);
             return self;
         }
         //
-        // Select the archetypes which does not posess at least one of the components.
+        // Select the archetypes which does not posess at least one of the given components.
         //
         pub fn not(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .not);
             return self;
         }
         //
-        // Select the archetypes which does not posess the entire set of component.
+        // Select the archetypes which does not posess the entire set of the given components.
         //
         pub fn none(self: *Self, comptime componentsTypes: anytype) *Self {
             self.createMatcher(componentsTypes, .none);
             return self;
         }
 
-        fn createMatcher(self: *Self, comptime componentsTypes: anytype, matcher_type: QueryMatcherType) void {
+        fn createMatcher(self: *Self, comptime componentsTypes: anytype, comptime matcher_type: QueryMatcherType) void {
             const components = comptime std.meta.fields(@TypeOf(componentsTypes));
 
             var mask = RawBitset.init(.{});
+
+            var matcher_type_str = std.fmt.comptimePrint("{d}", .{@enumToInt(matcher_type)});
+
+            self.prepared_query_hash.concat(matcher_type_str) catch unreachable;
+            self.prepared_query_hash.concat(":") catch unreachable;
 
             inline for (components) |field| {
                 const ComponentType = comptime @field(componentsTypes, field.name);
                 const component = comptime WorldType.getComponentDefinition(ComponentType);
                 mask.set(component.id);
+
+                var component_id_str = std.fmt.comptimePrint("{d}", .{component.id});
+                self.prepared_query_hash.concat(component_id_str) catch unreachable;
             }
 
-            self.matchers.append(QueryMatcher{
+            self.prepared_query_matchers.append(QueryMatcher{
                 .op_type = matcher_type,
                 .mask = mask,
             }) catch unreachable;
         }
 
-        pub fn execute(self: *Self) Query {
+        pub fn execute(self: *Self) *Query {
+            const hash_slice = self.prepared_query_hash.str();
+            //use get or pooute
+            if (self.queries.getPtr(hash_slice)) |query| {
+                self.prepared_query_matchers.clearAndFree();
+                self.prepared_query_hash.clear();
+                return query;
+            }
+
             var created_query = Query.init(
-                self.matchers.clone() catch unreachable,
+                self.prepared_query_matchers.clone() catch unreachable,
                 self.allocator,
             );
 
-            self.matchers.clearAndFree();
+            self.prepared_query_matchers.clearAndFree();
 
             created_query.execute(self.world);
+            const hash_slice_2 = self.prepared_query_hash.str();
 
-            return created_query;
+            self.queries.put(hash_slice_2, created_query) catch unreachable;
+
+            // is this necessary ??
+            const registered_query_ptr = self.queries.getPtr(hash_slice_2) orelse unreachable;
+
+            self.prepared_query_hash.clear();
+
+            return registered_query_ptr;
         }
     };
 }
 
 pub const QueryIterator = struct {
     const Self = @This();
+
     archetypes: *std.ArrayList(*Archetype),
 
     current_archetype_index: usize = 0,
+
     current_entity_index: usize = 0,
 
     pub fn next(self: *Self) ?Entity {
