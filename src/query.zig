@@ -47,6 +47,14 @@ pub const Query = struct {
         }
     }
 
+    pub fn each(self: *Self, function: fn (Entity) void) void {
+        for (self.archetypes.items) |archetype| {
+            for (archetype.entities.values) |e| {
+                function(e);
+            }
+        }
+    }
+
     fn execute(self: *Self, world: anytype) void {
         archetypes_loop: for (world.archetypes.all.items) |*archetype| {
             for (self.matchers.items) |*matcher| {

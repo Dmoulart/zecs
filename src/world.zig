@@ -70,7 +70,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         entities: EntityStorage,
 
-        // systems: std.ArrayList(*System),
+        systems: std.ArrayList(System(*Self)),
 
         query_builder: QueryBuilder(Self),
 
@@ -102,7 +102,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     options.allocator,
                 ),
                 .root = archetypes.getRoot(),
-                // .systems = std.ArrayList(*System).init(options.allocator),
+                .systems = std.ArrayList(System(*Self)).init(options.allocator),
             };
 
             // Init context component
@@ -138,6 +138,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.query_builder.deinit();
             self.archetypes.deinit();
             self.entities.deinit();
+            self.systems.deinit();
         }
 
         pub fn createEmpty(self: *Self) Entity {
@@ -145,6 +146,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         pub fn create(self: *Self, comptime entity_type: anytype) Entity {
+            assert(entity_type.type_archetype != null);
             return self.entities.create(entity_type.type_archetype orelse unreachable);
         }
 
@@ -213,12 +215,12 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return &self.query_builder;
         }
 
-        pub fn addSystem(self: *Self, system: System) void {
-            self.systems.append(system);
+        pub fn addSystem(self: *Self, system: System(*Self)) void {
+            self.systems.append(system) catch unreachable;
         }
 
         pub fn step(self: *Self) void {
-            for (self.systems.items) |*system| {
+            for (self.systems.items) |system| {
                 system(self);
             }
         }
@@ -479,6 +481,57 @@ test "Queries are cached" {
 
     var query_c_1 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
     var query_c_2 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
+
     try expect(query_c_1 == query_c_2);
     try expect(ecs.query_builder.queries.count() == 3);
+}
+
+const SysPosition = Component("SysPosition", struct { x: f32, y: f32 });
+const SysVelocity = Component("SysVelocity", struct { x: f32, y: f32 });
+const SysHealth = Component("SysHealth", struct { points: u32 });
+const SystemEcs = World(.{ SysPosition, SysVelocity, SysHealth }, 10);
+fn testSystem(world: *SystemEcs) void {
+    var iterator = world.query().all(.{ SysPosition, SysVelocity }).execute().iterator();
+
+    while (iterator.next()) |entity| {
+        var pos = world.read(entity, SysPosition);
+        var vel = world.read(entity, SysVelocity);
+        world.write(entity, SysPosition, .{
+            .x = pos.x + vel.x,
+            .y = pos.y + vel.y,
+        });
+    }
+}
+
+test "Can use  systems" {
+    var ecs = try SystemEcs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer SystemEcs.contextDeinit(ecs.allocator);
+
+    const Actor = SystemEcs.Type(.{ SysPosition, SysVelocity });
+    ecs.registerType(Actor);
+    var i: u32 = 0;
+    while (i < 9) : (i += 1) {
+        var entity = ecs.create(Actor);
+        ecs.write(entity, SysPosition, .{
+            .x = 0,
+            .y = 0,
+        });
+        ecs.write(entity, SysVelocity, .{
+            .x = 2,
+            .y = 2,
+        });
+    }
+
+    ecs.addSystem(&testSystem);
+
+    ecs.step();
+
+    var pos_1 = ecs.read(1, SysPosition);
+    try expect(pos_1.x == 2);
+    try expect(pos_1.y == 2);
+
+    var pos_8 = ecs.read(8, SysPosition);
+    try expect(pos_8.x == 2);
+    try expect(pos_8.y == 2);
 }

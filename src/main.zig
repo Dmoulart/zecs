@@ -7,11 +7,13 @@ const defineComponent = @import("./component.zig").defineComponent;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
 const Entity = @import("./world.zig").Entity;
+const System = @import("./system.zig").System;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
+const MyEcs = World(.{ Position, Velocity }, 10_00_000);
 const Position = Component("Position", struct {
     x: f32,
     y: f32,
@@ -21,38 +23,38 @@ const Velocity = Component("Velocity", struct {
     y: f32,
 });
 
+fn moveSystem(world: *MyEcs) void {
+    var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
+
+    while (iterator.next()) |entity| {
+        var pos = world.read(entity, Position);
+
+        var vel = world.read(entity, Position);
+
+        world.write(entity, Position, .{
+            .x = pos.x + vel.x,
+            .y = pos.y + vel.y,
+        });
+    }
+}
+
+// const move_system = .{moveSystem};
+
 pub fn main() !void {
-    // const Position = Component("Position", struct { x: f32, y: f32 });
-    // const Velocity = Component("Velocity", struct { x: f32, y: f32 });
-
-    const Ecs = World(.{ Position, Velocity }, 10);
-    var ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
+    var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
+    defer MyEcs.contextDeinit(ecs.allocator);
 
-    const entity = ecs.createEmpty();
-    _ = entity;
+    const Actor = MyEcs.Type(.{ Position, Velocity });
+    ecs.registerType(Actor);
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        _ = ecs.create(Actor);
+    }
 
-    var query_ptr_1 = ecs.query().any(.{Position}).execute();
-    std.debug.print("\n query 1", .{});
-    _ = query_ptr_1;
-    var query_ptr_2 = ecs.query().any(.{Position}).execute();
-    std.debug.print("\n query 2", .{});
-    _ = query_ptr_2;
+    ecs.addSystem(&moveSystem);
 
-    // try expect(query_ptr_1 == query_ptr_2);
-    // try expect(ecs.query_builder.queries.count() == 1);
-
-    var query_b_ptr_1 = ecs.query().any(.{ Position, Velocity }).execute();
-    std.debug.print("\n query 3", .{});
-    _ = query_b_ptr_1;
-    var query_b_ptr_2 = ecs.query().any(.{ Position, Velocity }).execute();
-    std.debug.print("\n query 4", .{});
-    _ = query_b_ptr_2;
-
-    // try expect(query_b_ptr_1 == query_b_ptr_2);
-    // try expect(ecs.query_builder.queries.count() == 2);
-    // try bench();
+    ecs.step();
 }
 
 pub fn bench() !void {
