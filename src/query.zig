@@ -183,12 +183,14 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
         }
 
         pub fn execute(self: *Self) *Query {
-            const hash_slice = self.prepared_query_hash.str();
-            //use get or pooute
-            if (self.queries.getPtr(hash_slice)) |query| {
+            const hash = self.prepared_query_hash.str();
+
+            var query = self.queries.getOrPut(hash) catch unreachable;
+
+            if (query.found_existing) {
                 self.prepared_query_matchers.clearAndFree();
                 self.prepared_query_hash.clear();
-                return query;
+                return query.value_ptr;
             }
 
             var created_query = Query.init(
@@ -196,19 +198,14 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
                 self.allocator,
             );
 
-            self.prepared_query_matchers.clearAndFree();
-
             created_query.execute(self.world);
-            const hash_slice_2 = self.prepared_query_hash.str();
 
-            self.queries.put(hash_slice_2, created_query) catch unreachable;
-
-            // is this necessary ??
-            const registered_query_ptr = self.queries.getPtr(hash_slice_2) orelse unreachable;
+            query.value_ptr.* = created_query;
 
             self.prepared_query_hash.clear();
+            self.prepared_query_matchers.clearAndFree();
 
-            return registered_query_ptr;
+            return query.value_ptr;
         }
     };
 }
