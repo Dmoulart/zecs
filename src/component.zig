@@ -77,14 +77,18 @@ pub fn ComponentStorage(comptime component: anytype) type {
         cached_items: SchemaItems = undefined,
 
         pub fn setup(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
-            _ = try self.data.ensureTotalCapacity(gpa, capacity);
-            _ = try self.data.resize(gpa, capacity);
+            _ = try self.data.ensureTotalCapacity(gpa, capacity + 1);
+            _ = try self.data.resize(gpa, capacity + 1);
 
             // Cache fields pointers
             self.cached_slice = self.data.slice();
             inline for (fields) |field_info, i| {
                 @field(self.cached_items, field_info.name) = self.cached_slice.items(@intToEnum(Field, i));
             }
+        }
+
+        pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
+            self.data.deinit(gpa);
         }
 
         pub fn read(self: *Self, entity: Entity) Schema {
@@ -108,10 +112,6 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         pub fn set(self: *Self, entity: Entity, comptime prop: anytype, data: anytype) void {
             @field(self.cached_items, prop)[entity] = data;
-        }
-
-        pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
-            self.data.deinit(gpa);
         }
     };
 }

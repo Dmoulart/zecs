@@ -6,55 +6,33 @@ const Component = @import("./component.zig").Component;
 const defineComponent = @import("./component.zig").defineComponent;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
-const Entity = @import("./world.zig").Entity;
+// const Entity = @import("./world.zig").Entity;
 const System = @import("./system.zig").System;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
-const MyEcs = World(.{ Position, Velocity }, 10_00_000);
-const Position = Component("Position", struct {
-    x: f32,
-    y: f32,
-});
-const Velocity = Component("Velocity", struct {
-    x: f32,
-    y: f32,
-});
-
-fn moveSystem(world: *MyEcs) void {
-    var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
-
-    while (iterator.next()) |entity| {
-        var pos = world.read(entity, Position);
-
-        var vel = world.read(entity, Position);
-
-        world.write(entity, Position, .{
-            .x = pos.x + vel.x,
-            .y = pos.y + vel.y,
-        });
-    }
-}
-
 // const move_system = .{moveSystem};
 
 pub fn main() !void {
-    var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
-    defer ecs.deinit();
-    defer MyEcs.contextDeinit(ecs.allocator);
+    // var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
+    // defer ecs.deinit();
+    // defer MyEcs.contextDeinit(ecs.allocator);
 
-    const Actor = MyEcs.Type(.{ Position, Velocity });
-    ecs.registerType(Actor);
-    var i: u32 = 0;
-    while (i < 100) : (i += 1) {
-        _ = ecs.create(Actor);
-    }
+    // const Actor = MyEcs.Type(.{ Position, Velocity });
+    // ecs.registerType(Actor);
+    // var i: u32 = 0;
 
-    ecs.addSystem(&moveSystem);
+    // while (i < 100) : (i += 1) {
+    //     _ = ecs.create(Actor);
+    // }
 
-    ecs.step();
+    // ecs.addSystem(moveSystem);
+
+    // ecs.step();
+
+    try bench();
 }
 
 pub fn bench() !void {
@@ -69,6 +47,8 @@ pub fn bench() !void {
     run(readTwoComponents);
 
     run(readTwoComponentsProp);
+
+    run(updateWith3Systems);
 }
 
 fn run(comptime function: anytype) void {
@@ -80,6 +60,14 @@ fn run(comptime function: anytype) void {
 }
 
 fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
     const Ecs = World(.{
         Position,
         Velocity,
@@ -113,6 +101,14 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
 }
 
 fn createEntitiesWithTwoComponents(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
     const Ecs = World(.{
         Position,
         Velocity,
@@ -143,6 +139,14 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
 }
 
 fn removeAndAddAComponent(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
     const Ecs = World(.{
         Position,
         Velocity,
@@ -180,6 +184,14 @@ fn removeAndAddAComponent(comptime n: u32) !void {
 }
 
 fn deleteEntities(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
     const Ecs = World(.{
         Position,
         Velocity,
@@ -214,6 +226,14 @@ fn deleteEntities(comptime n: u32) !void {
 }
 
 fn readTwoComponents(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
     const Ecs = World(.{
         Position,
         Velocity,
@@ -317,6 +337,76 @@ fn readTwoComponentsProp(comptime n: u32) !void {
         var vel = world.get(e, Vel, "x");
         _ = vel;
     }
+
+    Timer.end();
+}
+
+fn updateWith3Systems(comptime n: u32) !void {
+    const Position = Component("Position", struct {
+        x: f32,
+        y: f32,
+    });
+    const Velocity = Component("Velocity", struct {
+        x: f32,
+        y: f32,
+    });
+    const MyEcs = World(.{ Position, Velocity }, n);
+
+    var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
+
+    defer ecs.deinit();
+    defer MyEcs.contextDeinit(ecs.allocator);
+
+    const Sys = struct {
+        fn move(world: *MyEcs, entity: u64) void {
+            var pos = world.read(entity, Position);
+            var vel = world.read(entity, Velocity);
+
+            world.write(entity, Position, .{
+                .x = pos.x + vel.x,
+                .y = pos.y + vel.y,
+            });
+        }
+        fn moveSystem(world: *MyEcs) void {
+            var query = world.query().all(.{ Position, Velocity }).execute();
+            _ = query;
+
+            // query.each(world, @This().move);
+            var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
+
+            while (iterator.next()) |entity| {
+                var pos = world.read(entity, Position);
+                var vel = world.read(entity, Velocity);
+
+                world.write(entity, Position, .{
+                    .x = pos.x + vel.x,
+                    .y = pos.y + vel.y,
+                });
+            }
+        }
+    };
+
+    const Actor = MyEcs.Type(.{ Position, Velocity });
+    ecs.registerType(Actor);
+
+    var i: u32 = 0;
+
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\nUpdate {} entities with three systems", .{n});
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\n", .{});
+
+    ecs.addSystem(Sys.moveSystem);
+
+    while (i < n) : (i += 1) {
+        _ = ecs.create(Actor);
+    }
+
+    i = 0;
+
+    Timer.start();
+
+    ecs.step();
 
     Timer.end();
 }
