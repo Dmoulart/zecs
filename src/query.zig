@@ -188,8 +188,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             var query = self.queries.getOrPut(hash) catch unreachable;
 
             if (query.found_existing) {
-                self.prepared_query_matchers.clearAndFree();
-                self.prepared_query_hash.clear();
+                self.clearPreparedQuery();
                 return query.value_ptr;
             }
 
@@ -202,10 +201,14 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
 
             query.value_ptr.* = created_query;
 
-            self.prepared_query_hash.clear();
-            self.prepared_query_matchers.clearAndFree();
+            self.clearPreparedQuery();
 
             return query.value_ptr;
+        }
+
+        fn clearPreparedQuery(self: *Self) void {
+            self.prepared_query_hash.clear();
+            self.prepared_query_matchers.clearAndFree();
         }
     };
 }
