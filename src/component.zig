@@ -131,7 +131,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
         //     return result;
         // }
 
-        pub fn read(self: *Self, entity: Entity) *Schema {
+        pub fn read(self: *Self, entity: Entity) *const Schema {
             inline for (fields) |field_info| {
                 @field(self.read_data_cache, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }

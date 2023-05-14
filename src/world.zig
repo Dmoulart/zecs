@@ -184,7 +184,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component: anytype) *component.Schema {
+        pub fn read(self: *Self, entity: Entity, comptime component: anytype) *const component.Schema {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
@@ -476,7 +476,7 @@ test "Set component prop with packed component" {
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, Position);
-    
+
     var pos = ecs.pack(entity, Position);
     pos.x.* = 10;
     pos.y.* = 20;
