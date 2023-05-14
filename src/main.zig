@@ -248,7 +248,7 @@ fn readTwoComponents(comptime n: u32) !void {
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nread {} Entity Two Components", .{n});
+    std.debug.print("\nRead {} Entity Two Components", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 
@@ -365,16 +365,24 @@ fn updateWith3Systems(comptime n: u32) !void {
 
     const Sys = struct {
         fn move(world: *MyEcs, entity: Entity) void {
-            var pos = world.read(entity, Position);
-            var vel = world.read(entity, Velocity);
+            // var pos = world.read(entity, Position);
+            // var vel = world.read(entity, Velocity);
 
-            world.write(entity, Position, .{
-                .x = pos.x + vel.x,
-                .y = pos.y + vel.y,
-            });
+            // world.write(entity, Position, .{
+            //     .x = pos.x + vel.x,
+            //     .y = pos.y + vel.y,
+            // });
+
+            var pos = world.pack(entity, Position);
+            var vel = world.read(entity, Velocity);
+            pos.x.* += vel.x;
+            pos.y.* += vel.x;
+            // world.write(entity, Position, .{
+            //     .x = pos.x + vel.x,
+            //     .y = pos.y + vel.y,
+            // });
         }
         fn moveSystem(world: *MyEcs) void {
-
             var query = world.query().all(.{ Position, Velocity }).execute();
             query.each(@This().move);
 

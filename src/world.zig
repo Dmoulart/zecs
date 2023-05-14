@@ -5,6 +5,7 @@ const expect = @import("std").testing.expect;
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const ComponentStorage = @import("./component.zig").ComponentStorage;
+const Packed = @import("./component.zig").Packed;
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
@@ -173,6 +174,14 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             assert(self.has(entity, component));
 
             self.toggleComponent(entity, getComponentDefinition(component));
+        }
+
+        pub fn pack(self: *Self, entity: Entity, comptime component: anytype) Packed(component.Schema) {
+            assert(self.contains(entity));
+            assert(self.has(entity, component));
+
+            var storage = comptime @field(components, component.name).storage;
+            return storage.pack(entity);
         }
 
         pub fn read(self: *Self, entity: Entity, comptime component: anytype) component.Schema {

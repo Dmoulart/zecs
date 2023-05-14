@@ -28,6 +28,35 @@ pub fn Component(comptime component_name: []const u8, comptime T: type) type {
     };
 }
 
+// Schema type with pointers as props
+pub fn Packed(comptime Schema: anytype) type {
+    const SchemaFields = std.meta.fields(Schema);
+    const SchemaWithPropsPointers = comptime blk: {
+        var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
+        var Field = std.meta.FieldEnum(Schema);
+
+        inline for (SchemaFields) |field, i| {
+            // const componentsSchemaField = @field(component.Schema, field.name);
+            const FieldType = std.meta.fieldInfo(Schema, @intToEnum(Field, i)).field_type;
+            fields = fields ++ [_]std.builtin.Type.StructField{.{
+                .name = field.name[0..],
+                .field_type = *FieldType,
+                .is_comptime = false,
+                .alignment = @alignOf(*FieldType),
+                .default_value = &field.default_value,
+            }};
+        }
+        break :blk @Type(.{
+            .Struct = .{
+                .layout = .Auto,
+                .is_tuple = false,
+                .fields = fields,
+                .decls = &[_]std.builtin.Type.Declaration{},
+            },
+        });
+    };
+    return SchemaWithPropsPointers;
+}
 pub fn ComponentStorage(comptime component: anytype) type {
     const ComponentsSchemaFields = std.meta.fields(component.Schema);
 
@@ -95,6 +124,14 @@ pub fn ComponentStorage(comptime component: anytype) type {
             var result: Schema = undefined;
             inline for (fields) |field_info| {
                 @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+            }
+            return result;
+        }
+
+        pub fn pack(self: *Self, entity: Entity) Packed(Schema) {
+            var result: Packed(Schema) = undefined;
+            inline for (fields) |field_info| {
+                @field(result, field_info.name) = &@field(self.cached_items, field_info.name)[entity];
             }
             return result;
         }
