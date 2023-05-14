@@ -122,22 +122,22 @@ pub fn ComponentStorage(comptime component: anytype) type {
             self.data.deinit(gpa);
         }
 
-        // pub fn read(self: *Self, entity: Entity) Schema {
-        //     var result: Schema = undefined;
-        //     inline for (fields) |field_info| {
-        //         @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
-        //     }
-
-        //     return result;
-        // }
-
-        pub fn read(self: *Self, entity: Entity) *const Schema {
+        pub fn read(self: *Self, entity: Entity) Schema {
+            var result: Schema = undefined;
             inline for (fields) |field_info| {
-                @field(self.read_data_cache, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+                @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }
 
-            return &self.read_data_cache;
+            return result;
         }
+
+        // pub fn read(self: *Self, entity: Entity) *const Schema {
+        //     inline for (fields) |field_info| {
+        //         @field(self.read_data_cache, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+        //     }
+
+        //     return &self.read_data_cache;
+        // }
 
         pub fn pack(self: *Self, entity: Entity) Packed(Schema) {
             var result: Packed(Schema) = undefined;
@@ -152,9 +152,10 @@ pub fn ComponentStorage(comptime component: anytype) type {
         }
 
         pub fn write(self: *Self, entity: Entity, data: Schema) void {
-            inline for (fields) |field_info, i| {
+            inline for (fields) |field_info| {
+                @field(self.cached_items, field_info.name)[entity] = @field(data, field_info.name);
                 // Todo use the cached items
-                self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
+                // self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
             }
         }
 

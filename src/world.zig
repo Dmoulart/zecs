@@ -184,7 +184,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component: anytype) *const component.Schema {
+        pub fn read(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
@@ -515,33 +515,22 @@ test "Queries are cached" {
     try expect(ecs.query_builder.queries.count() == 3);
 }
 
-const SysPosition = Component("SysPosition", struct { x: f32, y: f32 });
-const SysVelocity = Component("SysVelocity", struct { x: f32, y: f32 });
-const SysHealth = Component("SysHealth", struct { points: u32 });
-const SystemEcs = World(.{ SysPosition, SysVelocity, SysHealth }, 10);
-fn testSystem(world: *SystemEcs) void {
-    var iterator = world.query().all(.{ SysPosition, SysVelocity }).execute().iterator();
+test "Can use systems" {
+    const SysPosition = Component("SysPosition", struct { x: f32, y: f32 });
+    const SysVelocity = Component("SysVelocity", struct { x: f32, y: f32 });
+    const SysHealth = Component("SysHealth", struct { points: u32 });
+    const SystemEcs = World(.{ SysPosition, SysVelocity, SysHealth }, 10);
 
-    while (iterator.next()) |entity| {
-        var pos = world.read(entity, SysPosition);
-        var vel = world.read(entity, SysVelocity);
-        world.write(entity, SysPosition, .{
-            .x = pos.x + vel.x,
-            .y = pos.y + vel.y,
-        });
-    }
-}
-
-test "Can use  systems" {
     var ecs = try SystemEcs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer SystemEcs.contextDeinit(ecs.allocator);
 
-    const Actor = SystemEcs.Type(.{ SysPosition, SysVelocity });
-    ecs.registerType(Actor);
     var i: u32 = 0;
     while (i < 9) : (i += 1) {
-        var entity = ecs.create(Actor);
+        var entity = ecs.createEmpty();
+        ecs.attach(entity, SysPosition);
+        ecs.attach(entity, SysVelocity);
+
         ecs.write(entity, SysPosition, .{
             .x = 0,
             .y = 0,
@@ -552,7 +541,22 @@ test "Can use  systems" {
         });
     }
 
-    ecs.addSystem(&testSystem);
+    const Sys = struct {
+        fn testSystem(world: *SystemEcs) void {
+            var iterator = world.query().all(.{ SysPosition, SysVelocity }).execute().iterator();
+
+            while (iterator.next()) |entity| {
+                var pos = world.read(entity, SysPosition);
+                var vel = world.read(entity, SysVelocity);
+                world.write(entity, SysPosition, .{
+                    .x = pos.x + vel.x,
+                    .y = pos.y + vel.y,
+                });
+            }
+        }
+    };
+
+    ecs.addSystem(Sys.testSystem);
 
     ecs.step();
 

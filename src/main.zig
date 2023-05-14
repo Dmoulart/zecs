@@ -13,26 +13,9 @@ const Query = @import("./query.zig").Query;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
-// const move_system = .{moveSystem};
-
 pub fn main() !void {
-    // var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
-    // defer ecs.deinit();
-    // defer MyEcs.contextDeinit(ecs.allocator);
 
-    // const Actor = MyEcs.Type(.{ Position, Velocity });
-    // ecs.registerType(Actor);
-    // var i: u32 = 0;
-
-    // while (i < 100) : (i += 1) {
-    //     _ = ecs.create(Actor);
-    // }
-
-    // ecs.addSystem(moveSystem);
-
-    // ecs.step();
-
-    try bench();
+    // try bench();
 }
 
 pub fn bench() !void {
@@ -277,8 +260,6 @@ fn readTwoComponents(comptime n: u32) !void {
         result += pos.x;
     }
     Timer.end();
-
-    std.debug.print("res {}", .{result});
 }
 
 fn readTwoComponentsProp(comptime n: u32) !void {
@@ -338,8 +319,8 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.start();
 
     while (e < n) : (e += 1) {
-        var pos = world.get(e, Pos, "x");
-        result += pos.*;
+        var posX = world.get(e, Pos, "x");
+        result += posX.*;
         var vel = world.get(e, Vel, "x");
         _ = vel;
     }
