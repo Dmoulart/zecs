@@ -18,63 +18,68 @@ pub const QueryMatcherType = enum {
 
 pub const QueryHash = String;
 
-pub const Query = struct {
-    const Self = @This();
+pub fn Query(comptime WorldType: anytype) type {
+    return struct {
+        const Self = @This();
 
-    archetypes: std.ArrayList(*Archetype),
+        archetypes: std.ArrayList(*Archetype),
 
-    matchers: std.ArrayList(QueryMatcher),
+        matchers: std.ArrayList(QueryMatcher),
 
-    allocator: std.mem.Allocator,
+        allocator: std.mem.Allocator,
 
-    pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Query {
-        return Query{
-            .allocator = allocator,
-            .matchers = matchers,
-            .archetypes = std.ArrayList(*Archetype).init(allocator),
-        };
-    }
+        world: *WorldType,
 
-    pub fn iterator(self: *Self) QueryIterator {
-        return QueryIterator{
-            .archetypes = &self.archetypes,
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        for (self.matchers.items) |*matcher| {
-            matcher.deinit();
+        pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
+            return Self{
+                .allocator = allocator,
+                .matchers = matchers,
+                .archetypes = std.ArrayList(*Archetype).init(allocator),
+                .world = undefined,
+            };
         }
-    }
 
-    pub fn each(self: *Self, function: fn (Entity) void) void {
-        for (self.archetypes.items) |archetype| {
-            for (archetype.entities.values) |e| {
-                function(e);
-            }
+        pub fn iterator(self: *Self) QueryIterator {
+            return QueryIterator{
+                .archetypes = &self.archetypes,
+            };
         }
-    }
 
-    fn execute(self: *Self, world: anytype) void {
-        archetypes_loop: for (world.archetypes.all.items) |*archetype| {
+        pub fn deinit(self: *Self) void {
             for (self.matchers.items) |*matcher| {
-                const mask = &matcher.mask;
-
-                if (!matcher.match(mask, &archetype.mask))
-                    continue :archetypes_loop;
+                matcher.deinit();
             }
-
-            _ = self.archetypes.append(archetype) catch null;
         }
-    }
 
-    pub fn has(self: *Self, entity: Entity) bool {
-        for (self.archetypes.items) |arch| {
-            if (arch.entities.has(entity)) return true;
+        pub fn each(self: *Self, function: *const fn (*WorldType, Entity) void) void {
+            for (self.archetypes.items) |archetype| {
+                for (archetype.entities.toSlice()) |e| {
+                    function(self.world, e);
+                }
+            }
         }
-        return false;
-    }
-};
+
+        fn execute(self: *Self, world: anytype) void {
+            archetypes_loop: for (world.archetypes.all.items) |*archetype| {
+                for (self.matchers.items) |*matcher| {
+                    const mask = &matcher.mask;
+
+                    if (!matcher.match(mask, &archetype.mask))
+                        continue :archetypes_loop;
+                }
+
+                _ = self.archetypes.append(archetype) catch null;
+            }
+        }
+
+        pub fn has(self: *Self, entity: Entity) bool {
+            for (self.archetypes.items) |arch| {
+                if (arch.entities.has(entity)) return true;
+            }
+            return false;
+        }
+    };
+}
 
 pub const QueryMatcher = struct {
     const Self = @This();
@@ -107,7 +112,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
         // Todo: make comptime string ds
         prepared_query_hash: String,
 
-        queries: std.hash_map.StringHashMap(Query),
+        queries: std.hash_map.StringHashMap(Query(WorldType)),
 
         world: *WorldType,
 
@@ -117,7 +122,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             return Self{
                 .allocator = allocator,
                 .prepared_query_matchers = std.ArrayList(QueryMatcher).init(allocator),
-                .queries = std.hash_map.StringHashMap(Query).init(allocator),
+                .queries = std.hash_map.StringHashMap(Query(WorldType)).init(allocator),
                 .world = undefined,
                 .prepared_query_hash = prepared_query_hash,
             };
@@ -190,7 +195,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             }) catch unreachable;
         }
 
-        pub fn execute(self: *Self) *Query {
+        pub fn execute(self: *Self) *Query(WorldType) {
             const hash = self.prepared_query_hash.str();
 
             var query = self.queries.getOrPut(hash) catch unreachable;
@@ -200,10 +205,12 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
                 return query.value_ptr;
             }
 
-            var created_query = Query.init(
+            var created_query = Query(WorldType).init(
                 self.prepared_query_matchers.clone() catch unreachable,
                 self.allocator,
             );
+
+            created_query.world = self.world;
 
             created_query.execute(self.world);
 
@@ -230,6 +237,7 @@ pub const QueryIterator = struct {
 
     current_entity_index: usize = 0,
 
+    // Iterator slower than each. Maybe do something about it ? or delete iterator ?
     pub fn next(self: *Self) ?Entity {
         if (self.current_archetype_index < self.archetypes.items.len) {
             var archetype_entities = self.archetypes.items[self.current_archetype_index].entities;

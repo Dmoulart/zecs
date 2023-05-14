@@ -23,7 +23,8 @@ pub fn SparseSet(comptime T: type) type {
         };
 
         pub fn init(options: SparseSetOptions) Self {
-            var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY) + 1;
+            var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY);
+            // var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY) + 1;
             // holy molly err handling
             var indices = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(indices);
@@ -83,6 +84,10 @@ pub fn SparseSet(comptime T: type) type {
             var index = self.indices[value];
             self.values[index] = last;
             self.indices[last] = index;
+        }
+
+        pub fn toSlice(self: *Self) []T {
+            return self.values[0..self.count];
         }
 
         fn grow(self: *Self) void {

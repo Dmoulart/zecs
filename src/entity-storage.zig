@@ -8,7 +8,7 @@ pub const DEFAULT_ENTITIES_STORAGE_CAPACITY = 10_000;
 
 var global_entity_counter: Entity = 0;
 
-pub const Entity = u64;
+pub const Entity = u32;
 
 pub const EntityStorage = struct {
     const Self = @This();

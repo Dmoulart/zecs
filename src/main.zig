@@ -6,7 +6,7 @@ const Component = @import("./component.zig").Component;
 const defineComponent = @import("./component.zig").defineComponent;
 const Archetype = @import("./archetype.zig").Archetype;
 const World = @import("./world.zig").World;
-// const Entity = @import("./world.zig").Entity;
+const Entity = @import("./entity-storage.zig").Entity;
 const System = @import("./system.zig").System;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const Query = @import("./query.zig").Query;
@@ -259,7 +259,7 @@ fn readTwoComponents(comptime n: u32) !void {
         world.attach(ent, Velocity);
     }
 
-    var e: usize = 1;
+    var e: Entity = 1;
 
     var ent = world.createEmpty();
     world.attach(ent, Position);
@@ -316,18 +316,24 @@ fn readTwoComponentsProp(comptime n: u32) !void {
         world.write(
             ent,
             Pos,
-            .{ .x = @intToFloat(f32, i), .y = @intToFloat(f32, i + 1) },
+            .{
+                .x = @intToFloat(f32, i),
+                .y = @intToFloat(f32, i + 1),
+            },
         );
 
         world.attach(ent, Vel);
         world.write(
             ent,
             Vel,
-            .{ .x = @intToFloat(f32, i), .y = @intToFloat(f32, i + 1) },
+            .{
+                .x = @intToFloat(f32, i),
+                .y = @intToFloat(f32, i + 1),
+            },
         );
     }
 
-    var e: usize = 1;
+    var e: Entity = 1;
     var result: f128 = 0;
     Timer.start();
 
@@ -358,7 +364,7 @@ fn updateWith3Systems(comptime n: u32) !void {
     defer MyEcs.contextDeinit(ecs.allocator);
 
     const Sys = struct {
-        fn move(world: *MyEcs, entity: u64) void {
+        fn move(world: *MyEcs, entity: Entity) void {
             var pos = world.read(entity, Position);
             var vel = world.read(entity, Velocity);
 
@@ -368,21 +374,20 @@ fn updateWith3Systems(comptime n: u32) !void {
             });
         }
         fn moveSystem(world: *MyEcs) void {
+
             var query = world.query().all(.{ Position, Velocity }).execute();
-            _ = query;
+            query.each(@This().move);
 
-            // query.each(world, @This().move);
-            var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
+            // var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
+            // while (iterator.next()) |entity| {
+            //     var pos = world.read(entity, Position);
+            //     var vel = world.read(entity, Velocity);
 
-            while (iterator.next()) |entity| {
-                var pos = world.read(entity, Position);
-                var vel = world.read(entity, Velocity);
-
-                world.write(entity, Position, .{
-                    .x = pos.x + vel.x,
-                    .y = pos.y + vel.y,
-                });
-            }
+            //     world.write(entity, Position, .{
+            //         .x = pos.x + vel.x,
+            //         .y = pos.y + vel.y,
+            //     });
+            // }
         }
     };
 
@@ -392,7 +397,7 @@ fn updateWith3Systems(comptime n: u32) !void {
     var i: u32 = 0;
 
     std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nUpdate {} entities with three systems", .{n});
+    std.debug.print("\nUpdate {} entities with one system", .{n});
     std.debug.print("\n-------------------------------", .{});
     std.debug.print("\n", .{});
 
