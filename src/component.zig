@@ -105,6 +105,8 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         cached_items: SchemaItems = undefined,
 
+        read_data_cache: Schema = undefined,
+
         pub fn setup(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
             _ = try self.data.ensureTotalCapacity(gpa, capacity + 1);
             _ = try self.data.resize(gpa, capacity + 1);
@@ -120,12 +122,21 @@ pub fn ComponentStorage(comptime component: anytype) type {
             self.data.deinit(gpa);
         }
 
-        pub fn read(self: *Self, entity: Entity) Schema {
-            var result: Schema = undefined;
+        // pub fn read(self: *Self, entity: Entity) Schema {
+        //     var result: Schema = undefined;
+        //     inline for (fields) |field_info| {
+        //         @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+        //     }
+
+        //     return result;
+        // }
+
+        pub fn read(self: *Self, entity: Entity) *Schema {
             inline for (fields) |field_info| {
-                @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+                @field(self.read_data_cache, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }
-            return result;
+
+            return &self.read_data_cache;
         }
 
         pub fn pack(self: *Self, entity: Entity) Packed(Schema) {

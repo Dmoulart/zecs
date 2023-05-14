@@ -377,6 +377,7 @@ fn updateWith3Systems(comptime n: u32) !void {
             var vel = world.read(entity, Velocity);
             pos.x.* += vel.x;
             pos.y.* += vel.x;
+
             // world.write(entity, Position, .{
             //     .x = pos.x + vel.x,
             //     .y = pos.y + vel.y,

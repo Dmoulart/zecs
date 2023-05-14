@@ -184,7 +184,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+        pub fn read(self: *Self, entity: Entity, comptime component: anytype) *component.Schema {
             assert(self.contains(entity));
             assert(self.has(entity, component));
 
@@ -464,6 +464,26 @@ test "Set component prop" {
 
     var x = ecs.get(entity, Position, "x");
     try expect(x.* == 10);
+}
+
+test "Set component prop with packed component" {
+    const Position = Component("Position", struct { x: f32, y: f32 });
+
+    const Ecs = World(.{Position}, 10);
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+    defer Ecs.contextDeinit(ecs.allocator);
+
+    const entity = ecs.createEmpty();
+    ecs.attach(entity, Position);
+    
+    var pos = ecs.pack(entity, Position);
+    pos.x.* = 10;
+    pos.y.* = 20;
+
+    var read_pos = ecs.read(entity, Position);
+    try expect(read_pos.x == 10);
+    try expect(read_pos.y == 20);
 }
 
 test "Queries are cached" {
