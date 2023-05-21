@@ -43,7 +43,7 @@ pub fn Packed(comptime Schema: anytype) type {
                 .field_type = *FieldType,
                 .is_comptime = false,
                 .alignment = @alignOf(*FieldType),
-                .default_value = &field.default_value,
+                .default_value = field.default_value,
             }};
         }
         break :blk @Type(.{
@@ -72,7 +72,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
                 .field_type = []FieldType,
                 .is_comptime = false,
                 .alignment = @alignOf(FieldType),
-                .default_value = &field.default_value,
+                .default_value = field.default_value,
             }};
         }
         break :blk @Type(.{
@@ -122,6 +122,16 @@ pub fn ComponentStorage(comptime component: anytype) type {
             self.data.deinit(gpa);
         }
 
+        pub fn copy(self: *Self, entity: Entity) Schema {
+            var result: Schema = undefined;
+            inline for (fields) |field_info| {
+                @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+            }
+
+            return result;
+        }
+
+        // this is a copy op not a read op
         pub fn read(self: *Self, entity: Entity) Schema {
             var result: Schema = undefined;
             inline for (fields) |field_info| {
@@ -131,7 +141,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
             return result;
         }
 
-        // pub fn read(self: *Self, entity: Entity) *const Schema {
+        // pub fn readCached(self: *Self, entity: Entity) *const Schema {
         //     inline for (fields) |field_info| {
         //         @field(self.read_data_cache, field_info.name) = @field(self.cached_items, field_info.name)[entity];
         //     }
@@ -154,8 +164,6 @@ pub fn ComponentStorage(comptime component: anytype) type {
         pub fn write(self: *Self, entity: Entity, data: Schema) void {
             inline for (fields) |field_info| {
                 @field(self.cached_items, field_info.name)[entity] = @field(data, field_info.name);
-                // Todo use the cached items
-                // self.cached_slice.items(@intToEnum(Field, i))[entity] = @field(data, field_info.name);
             }
         }
 

@@ -14,8 +14,7 @@ const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
-
-    // try bench();
+    try bench();
 }
 
 pub fn bench() !void {
@@ -357,7 +356,7 @@ fn updateWith3Systems(comptime n: u32) !void {
             var pos = world.pack(entity, Position);
             var vel = world.read(entity, Velocity);
             pos.x.* += vel.x;
-            pos.y.* += vel.x;
+            pos.y.* += vel.y;
 
             // world.write(entity, Position, .{
             //     .x = pos.x + vel.x,
