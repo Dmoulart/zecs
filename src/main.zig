@@ -396,7 +396,7 @@ fn updateWith3Systems(comptime n: u32) !void {
             pos.y.* += vel.y;
         }
         fn moveSystem(world: *MyEcs) void {
-            var query = world.query().all(.{ Position, Velocity }).execute();
+            var query = world.query().all(.{ .Position, .Velocity }).execute();
             query.each(@This().move);
 
             // var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
