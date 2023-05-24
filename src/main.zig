@@ -14,6 +14,51 @@ const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
+    // try bench();
+    const Ecs = World(.{
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
+    }, 10_000);
+
+    var world: Ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
+    var ent = world.createEmpty();
+
+    var has_position = world.has(
+        ent,
+        .Position,
+    );
+    std.debug.print("has position {}", .{has_position});
+
+    world.attach(ent, .Position);
+    var has_position_after = world.has(
+        ent,
+        .Position,
+    );
+    std.debug.print("has position {}", .{has_position_after});
+
+    world.detach(ent, .Position);
+    std.debug.print("has position {}", .{world.has(
+        ent,
+        .Position,
+    )});
+
+    world.attach(ent, .Position);
+    world.write(ent, .Position, .{
+        .x = 10,
+        .y = 5,
+    });
+    world.set(ent, .Position, .x, 100);
+    _ = world.get(ent, .Position, .x);
+    _ = world.read(ent, .Position);
+    var pack = world.pack(ent, .Position);
+    _ = pack;
+
     try bench();
 }
 
@@ -113,8 +158,8 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
 
-        world.attach(ent, &Position);
-        world.attach(ent, &Velocity);
+        world.attach(ent, .Position);
+        world.attach(ent, .Velocity);
     }
 
     Timer.end();
@@ -151,16 +196,16 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
 
-        world.attach(ent, &Position);
-        world.attach(ent, &Velocity);
+        world.attach(ent, .Position);
+        world.attach(ent, .Velocity);
     }
 
     i = 1;
 
     Timer.start();
     while (i < n) : (i += 1) {
-        world.detach(i, Position);
-        world.attach(i, Position);
+        world.detach(i, .Position);
+        world.attach(i, .Position);
     }
     Timer.end();
 }
@@ -195,8 +240,8 @@ fn deleteEntities(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
 
-        world.attach(ent, &Position);
-        world.attach(ent, &Velocity);
+        world.attach(ent, .Position);
+        world.attach(ent, .Velocity);
     }
 
     i = 1;
@@ -237,23 +282,23 @@ fn readTwoComponents(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
 
-        world.attach(ent, Position);
-        world.attach(ent, Velocity);
+        world.attach(ent, .Position);
+        world.attach(ent, .Velocity);
     }
 
     var e: Entity = 1;
 
     var ent = world.createEmpty();
-    world.attach(ent, Position);
-    world.attach(ent, Velocity);
+    world.attach(ent, .Position);
+    world.attach(ent, .Velocity);
 
     var result: f128 = 0;
 
     Timer.start();
     while (e < n) : (e += 1) {
-        var pos = world.read(e, Position);
+        var pos = world.read(e, .Position);
 
-        var vel = world.read(e, Velocity);
+        var vel = world.read(e, .Velocity);
         _ = vel;
         // If we are not doing this the compiler will remove the loop in releas fast builds
         result += pos.x;
@@ -292,20 +337,20 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = world.createEmpty();
 
-        world.attach(ent, Pos);
+        world.attach(ent, .Pos);
         world.write(
             ent,
-            Pos,
+            .Pos,
             .{
                 .x = @intToFloat(f32, i),
                 .y = @intToFloat(f32, i + 1),
             },
         );
 
-        world.attach(ent, Vel);
+        world.attach(ent, .Vel);
         world.write(
             ent,
-            Vel,
+            .Vel,
             .{
                 .x = @intToFloat(f32, i),
                 .y = @intToFloat(f32, i + 1),
@@ -318,9 +363,9 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.start();
 
     while (e < n) : (e += 1) {
-        var posX = world.get(e, Pos, "x");
+        var posX = world.get(e, .Pos, .x);
         result += posX.*;
-        var vel = world.get(e, Vel, "x");
+        var vel = world.get(e, .Vel, .x);
         _ = vel;
     }
 
@@ -345,23 +390,10 @@ fn updateWith3Systems(comptime n: u32) !void {
 
     const Sys = struct {
         fn move(world: *MyEcs, entity: Entity) void {
-            // var pos = world.read(entity, Position);
-            // var vel = world.read(entity, Velocity);
-
-            // world.write(entity, Position, .{
-            //     .x = pos.x + vel.x,
-            //     .y = pos.y + vel.y,
-            // });
-
-            var pos = world.pack(entity, Position);
-            var vel = world.read(entity, Velocity);
+            var pos = world.pack(entity, .Position);
+            var vel = world.read(entity, .Velocity);
             pos.x.* += vel.x;
             pos.y.* += vel.y;
-
-            // world.write(entity, Position, .{
-            //     .x = pos.x + vel.x,
-            //     .y = pos.y + vel.y,
-            // });
         }
         fn moveSystem(world: *MyEcs) void {
             var query = world.query().all(.{ Position, Velocity }).execute();

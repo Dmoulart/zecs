@@ -36,8 +36,8 @@ pub fn Packed(comptime Schema: anytype) type {
         var Field = std.meta.FieldEnum(Schema);
 
         inline for (SchemaFields) |field, i| {
-            // const componentsSchemaField = @field(component.Schema, field.name);
             const FieldType = std.meta.fieldInfo(Schema, @intToEnum(Field, i)).field_type;
+
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = field.name[0..],
                 .field_type = *FieldType,
@@ -167,8 +167,8 @@ pub fn ComponentStorage(comptime component: anytype) type {
             }
         }
 
-        pub fn set(self: *Self, entity: Entity, comptime prop: anytype, data: anytype) void {
-            @field(self.cached_items, prop)[entity] = data;
+        pub fn set(self: *Self, entity: Entity, comptime prop: std.meta.FieldEnum(Schema), data: anytype) void {
+            @field(self.cached_items, @tagName(prop))[entity] = data;
         }
     };
 }

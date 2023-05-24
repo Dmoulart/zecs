@@ -1,4 +1,5 @@
 const std = @import("std");
+const meta = @import("std").meta;
 const assert = @import("std").debug.assert;
 const expect = @import("std").testing.expect;
 
@@ -52,6 +53,8 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             },
         });
     };
+
+    const ComponentEnumName = meta.FieldEnum(WorldComponents);
 
     return struct {
         const Self = @This();
@@ -155,64 +158,92 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.entities.delete(entity);
         }
 
-        pub fn has(self: *Self, entity: Entity, comptime component: anytype) bool {
+        pub fn has(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentEnumName,
+        ) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
-            return archetype.has(comptime getComponentDefinition(component).id);
+            var component = comptime getComponentDefinition(component_name);
+
+            return archetype.has(component.id);
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
             return self.entities.contains(entity);
         }
 
-        pub fn attach(self: *Self, entity: Entity, comptime component: anytype) void {
-            assert(!self.has(entity, component));
+        pub fn attach(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentEnumName,
+        ) void {
+            assert(!self.has(entity, component_name));
 
-            self.toggleComponent(entity, getComponentDefinition(component));
+            self.toggleComponent(entity, component_name);
         }
 
-        pub fn detach(self: *Self, entity: Entity, comptime component: anytype) void {
-            assert(self.has(entity, component));
+        pub fn detach(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentEnumName,
+        ) void {
+            assert(self.has(entity, component_name));
 
-            self.toggleComponent(entity, getComponentDefinition(component));
+            self.toggleComponent(entity, component_name);
         }
 
-        pub fn pack(self: *Self, entity: Entity, comptime component: anytype) Packed(component.Schema) {
+        pub fn pack(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
             assert(self.contains(entity));
-            assert(self.has(entity, component));
+            assert(self.has(entity, component_name));
 
-            var storage = comptime @field(components, component.name).storage;
+            var storage = getComponent(component_name).storage;
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component: anytype) component.Schema {
+        pub fn read(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) @TypeOf(getComponentDefinition(component_name)).Schema {
             assert(self.contains(entity));
-            assert(self.has(entity, component));
+            assert(self.has(entity, component_name));
 
-            var storage = comptime @field(components, component.name).storage;
+            var storage = getComponent(component_name).storage;
             return storage.read(entity);
         }
 
-        pub fn write(self: *Self, entity: Entity, comptime component: anytype, data: anytype) void {
+        pub fn write(self: *Self, entity: Entity, comptime component_name: ComponentEnumName, data: anytype) void {
             assert(self.contains(entity));
-            assert(self.has(entity, component));
+            assert(self.has(entity, component_name));
 
-            var storage = comptime @field(components, component.name).storage;
+            var storage = getComponent(component_name).storage;
             storage.write(entity, data);
         }
 
-        pub fn get(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype) *@TypeOf(@field(ComponentStorage(component).schema_instance, prop)) {
+        // @todo simplify the fuck out of these types signatures
+        pub fn get(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentEnumName,
+            comptime prop: ComponentPropField(component_name),
+        ) *@TypeOf(
+            @field(ComponentStorage(@TypeOf(getComponentDefinition(component_name))).schema_instance, @tagName(prop)),
+        ) {
             assert(self.contains(entity));
-            assert(self.has(entity, component));
+            assert(self.has(entity, component_name));
 
-            var storage = comptime @field(components, component.name).storage;
-            return storage.get(entity, prop);
+            var storage = getComponent(component_name).storage;
+            return storage.get(entity, @tagName(prop));
         }
 
-        pub fn set(self: *Self, entity: Entity, comptime component: anytype, comptime prop: anytype, data: anytype) void {
+        pub fn set(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentEnumName,
+            comptime prop: ComponentPropField(component_name),
+            data: anytype,
+        ) void {
             assert(self.contains(entity));
-            assert(self.has(entity, component));
+            assert(self.has(entity, component_name));
 
-            var storage = comptime @field(components, component.name).storage;
+            var storage = getComponent(component_name).storage;
             storage.set(entity, prop, data);
         }
 
@@ -234,8 +265,37 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             }
         }
 
-        pub fn getComponentDefinition(comptime component: anytype) @TypeOf(@field(components_definitions, component.name)) {
-            return comptime @field(components_definitions, component.name);
+        pub fn getComponentDefinition(comptime component_name: ComponentEnumName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
+            return comptime @field(components_definitions, @tagName(component_name));
+        }
+
+        pub fn getComponent(comptime component_name: ComponentEnumName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
+            return comptime @field(components, @tagName(component_name));
+        }
+
+        pub fn registerType(self: *Self, comptime entity_type: anytype) void {
+            entity_type.precalcArchetype(self);
+        }
+
+        fn toggleComponent(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) void {
+            var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
+
+            var component = comptime getComponentDefinition(component_name);
+
+            if (archetype.edge.get(component.id)) |edge| {
+                self.swapArchetypes(entity, archetype, edge);
+            } else {
+                var new_archetype = self.archetypes.derive(archetype, component.id);
+
+                self.swapArchetypes(entity, archetype, new_archetype);
+            }
+        }
+
+        fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
+            self.entities.setArchetype(entity, new);
+
+            old.entities.removeUnsafe(entity);
+            new.entities.add(entity);
         }
 
         pub fn Type(comptime definition: anytype) type {
@@ -263,26 +323,8 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             };
         }
 
-        pub fn registerType(self: *Self, comptime entity_type: anytype) void {
-            entity_type.precalcArchetype(self);
-        }
-
-        fn toggleComponent(self: *Self, entity: Entity, component: anytype) void {
-            var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
-            if (archetype.edge.get(component.id)) |edge| {
-                self.swapArchetypes(entity, archetype, edge);
-            } else {
-                var new_archetype = self.archetypes.derive(archetype, component.id);
-
-                self.swapArchetypes(entity, archetype, new_archetype);
-            }
-        }
-
-        fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
-            self.entities.setArchetype(entity, new);
-
-            old.entities.removeUnsafe(entity);
-            new.entities.add(entity);
+        pub fn ComponentPropField(comptime component_name: ComponentEnumName) type {
+            return meta.FieldEnum(@TypeOf(getComponentDefinition(component_name)).Schema);
         }
     };
 }
