@@ -63,7 +63,7 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     defer world.deinit();
     defer Ecs.contextDeinit(world.allocator);
 
-    const Actor = Ecs.Type(.{ Position, Velocity });
+    const Actor = Ecs.Type(.{ .Position, .Velocity });
     world.registerType(Actor);
 
     var i: u32 = 0;
@@ -366,7 +366,7 @@ fn updateWith3Systems(comptime n: u32) !void {
         }
     };
 
-    const Actor = MyEcs.Type(.{ Position, Velocity });
+    const Actor = MyEcs.Type(.{ .Position, .Velocity });
     ecs.registerType(Actor);
 
     var i: u32 = 0;

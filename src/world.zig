@@ -54,7 +54,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         });
     };
 
-    const ComponentEnumName = meta.FieldEnum(WorldComponents);
+    const ComponentName = meta.FieldEnum(WorldComponents);
 
     return struct {
         const Self = @This();
@@ -161,7 +161,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn has(
             self: *Self,
             entity: Entity,
-            comptime component_name: ComponentEnumName,
+            comptime component_name: ComponentName,
         ) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
             var component = comptime getComponentDefinition(component_name);
@@ -176,7 +176,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn attach(
             self: *Self,
             entity: Entity,
-            comptime component_name: ComponentEnumName,
+            comptime component_name: ComponentName,
         ) void {
             assert(!self.has(entity, component_name));
 
@@ -186,14 +186,14 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn detach(
             self: *Self,
             entity: Entity,
-            comptime component_name: ComponentEnumName,
+            comptime component_name: ComponentName,
         ) void {
             assert(self.has(entity, component_name));
 
             self.toggleComponent(entity, component_name);
         }
 
-        pub fn pack(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
+        pub fn pack(self: *Self, entity: Entity, comptime component_name: ComponentName) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -201,7 +201,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) @TypeOf(getComponentDefinition(component_name)).Schema {
+        pub fn read(self: *Self, entity: Entity, comptime component_name: ComponentName) @TypeOf(getComponentDefinition(component_name)).Schema {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -209,7 +209,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.read(entity);
         }
 
-        pub fn write(self: *Self, entity: Entity, comptime component_name: ComponentEnumName, data: anytype) void {
+        pub fn write(self: *Self, entity: Entity, comptime component_name: ComponentName, data: anytype) void {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -221,7 +221,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn get(
             self: *Self,
             entity: Entity,
-            comptime component_name: ComponentEnumName,
+            comptime component_name: ComponentName,
             comptime prop: ComponentPropField(component_name),
         ) *@TypeOf(
             @field(ComponentStorage(@TypeOf(getComponentDefinition(component_name))).schema_instance, @tagName(prop)),
@@ -236,7 +236,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         pub fn set(
             self: *Self,
             entity: Entity,
-            comptime component_name: ComponentEnumName,
+            comptime component_name: ComponentName,
             comptime prop: ComponentPropField(component_name),
             data: anytype,
         ) void {
@@ -265,11 +265,11 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             }
         }
 
-        pub fn getComponentDefinition(comptime component_name: ComponentEnumName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
+        pub fn getComponentDefinition(comptime component_name: ComponentName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
             return comptime @field(components_definitions, @tagName(component_name));
         }
 
-        pub fn getComponent(comptime component_name: ComponentEnumName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
+        pub fn getComponent(comptime component_name: ComponentName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
             return comptime @field(components, @tagName(component_name));
         }
 
@@ -277,7 +277,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             entity_type.precalcArchetype(self);
         }
 
-        fn toggleComponent(self: *Self, entity: Entity, comptime component_name: ComponentEnumName) void {
+        fn toggleComponent(self: *Self, entity: Entity, comptime component_name: ComponentName) void {
             var archetype: *Archetype = self.entities.getArchetype(entity) orelse unreachable;
 
             var component = comptime getComponentDefinition(component_name);
@@ -298,8 +298,10 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             new.entities.add(entity);
         }
 
+        // Create a pr-egenerated entity type from a set of components.
+        // A type must be registered by the world before being used.
         pub fn Type(comptime definition: anytype) type {
-            const definition_fields = comptime std.meta.fields(@TypeOf(definition));
+            const components_names = comptime std.meta.fields(@TypeOf(definition));
 
             return struct {
                 pub var type_archetype: ?*Archetype = null;
@@ -307,7 +309,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 fn precalcArchetype(world: *Self) void {
                     var archetype = world.archetypes.getRoot();
 
-                    inline for (definition_fields) |*field| {
+                    inline for (components_names) |*field| {
                         const component_id = comptime blk: {
                             const component_name = @field(definition, field.name);
                             break :blk getComponentDefinition(component_name).id;
@@ -324,7 +326,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             };
         }
 
-        pub fn ComponentPropField(comptime component_name: ComponentEnumName) type {
+        pub fn ComponentPropField(comptime component_name: ComponentName) type {
             return meta.FieldEnum(@TypeOf(getComponentDefinition(component_name)).Schema);
         }
     };
@@ -386,22 +388,18 @@ test "Create attach and detach components" {
 }
 
 test "Create type" {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Rotation = Component("Rotation", struct {
-        degrees: i8,
-    });
-
     const Ecs = World(.{
-        Position,
-        Velocity,
-        Rotation,
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Rotation", struct {
+            degrees: i8,
+        }),
     }, 10);
 
     const Actor = Ecs.Type(.{
