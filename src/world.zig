@@ -330,6 +330,24 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 }
 
 test "Create World type with comptime components" {
+    comptime {
+        const Ecs = World(.{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        }, 10);
+
+        try expect(Ecs.components_definitions.Position.id == 1);
+        try expect(Ecs.components_definitions.Velocity.id == 2);
+    }
+}
+
+test "Create attach and detach components" {
     const Ecs = World(.{
         Component("Position", struct {
             x: f32,
@@ -339,50 +357,31 @@ test "Create World type with comptime components" {
             x: f32,
             y: f32,
         }),
+        Component("Rotation", struct {
+            degrees: i8,
+        }),
     }, 10);
 
-    try expect(Ecs.components.Position.id == 1);
-    try expect(Ecs.components.Velocity.id == 2);
-}
-
-test "Create attach and detach components" {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Rotation = Component("Rotation", struct {
-        degrees: i8,
-    });
-
-    const Ecs = World(.{
-        Position,
-        Velocity,
-        Rotation,
-    }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
 
     var ent = ecs.createEmpty();
 
-    ecs.attach(ent, Position);
-    try expect(ecs.has(ent, Position));
-    try expect(!ecs.has(ent, Rotation));
+    ecs.attach(ent, .Position);
+    try expect(ecs.has(ent, .Position));
+    try expect(!ecs.has(ent, .Rotation));
 
-    ecs.attach(ent, Rotation);
-    try expect(ecs.has(ent, Rotation));
+    ecs.attach(ent, .Rotation);
+    try expect(ecs.has(ent, .Rotation));
 
-    ecs.detach(ent, Position);
-    try expect(!ecs.has(ent, Position));
-    try expect(ecs.has(ent, Rotation));
+    ecs.detach(ent, .Position);
+    try expect(!ecs.has(ent, .Position));
+    try expect(ecs.has(ent, .Rotation));
 
-    ecs.detach(ent, Rotation);
-    try expect(!ecs.has(ent, Position));
-    try expect(!ecs.has(ent, Rotation));
+    ecs.detach(ent, .Rotation);
+    try expect(!ecs.has(ent, .Position));
+    try expect(!ecs.has(ent, .Rotation));
 }
 
 test "Create type" {
@@ -418,9 +417,9 @@ test "Create type" {
     const ent = ecs.create(Actor);
 
     try expect(ent == 1);
-    try expect(ecs.has(ent, Position));
-    try expect(ecs.has(ent, Velocity));
-    try expect(!ecs.has(ent, Rotation));
+    try expect(ecs.has(ent, .Position));
+    try expect(ecs.has(ent, .Velocity));
+    try expect(!ecs.has(ent, .Rotation));
 }
 
 test "Create multiple types" {
@@ -463,16 +462,16 @@ test "Create multiple types" {
     const ent = ecs.create(Actor);
 
     try expect(ent == 1);
-    try expect(ecs.has(ent, Position));
-    try expect(ecs.has(ent, Velocity));
-    try expect(!ecs.has(ent, Rotation));
+    try expect(ecs.has(ent, .Position));
+    try expect(ecs.has(ent, .Velocity));
+    try expect(!ecs.has(ent, .Rotation));
 
     const ent2 = ecs.create(Body);
 
     try expect(ent2 == 2);
-    try expect(ecs.has(ent2, Position));
-    try expect(ecs.has(ent2, Velocity));
-    try expect(ecs.has(ent2, Rotation));
+    try expect(ecs.has(ent2, .Position));
+    try expect(ecs.has(ent2, .Velocity));
+    try expect(ecs.has(ent2, .Rotation));
 }
 
 test "write component data" {
@@ -484,10 +483,10 @@ test "write component data" {
     defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
-    ecs.attach(entity, Position);
-    ecs.write(entity, Position, .{ .x = 10, .y = 20 });
+    ecs.attach(entity, .Position);
+    ecs.write(entity, .Position, .{ .x = 10, .y = 20 });
 
-    var data = ecs.read(entity, Position);
+    var data = ecs.read(entity, .Position);
     try expect(data.x == 10);
     try expect(data.y == 20);
 }
@@ -501,10 +500,10 @@ test "Set component prop" {
     defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
-    ecs.attach(entity, Position);
-    ecs.set(entity, Position, "x", 10);
+    ecs.attach(entity, .Position);
+    ecs.set(entity, .Position, .x, 10);
 
-    var x = ecs.get(entity, Position, "x");
+    var x = ecs.get(entity, .Position, .x);
     try expect(x.* == 10);
 }
 
@@ -517,13 +516,13 @@ test "Set component prop with packed component" {
     defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
-    ecs.attach(entity, Position);
+    ecs.attach(entity, .Position);
 
-    var pos = ecs.pack(entity, Position);
+    var pos = ecs.pack(entity, .Position);
     pos.x.* = 10;
     pos.y.* = 20;
 
-    var read_pos = ecs.read(entity, Position);
+    var read_pos = ecs.read(entity, .Position);
     try expect(read_pos.x == 10);
     try expect(read_pos.y == 20);
 }
@@ -538,20 +537,20 @@ test "Queries are cached" {
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
 
-    var query_a_1 = ecs.query().any(.{Position}).execute();
-    var query_a_2 = ecs.query().any(.{Position}).execute();
+    var query_a_1 = ecs.query().any(.{.Position}).execute();
+    var query_a_2 = ecs.query().any(.{.Position}).execute();
 
     try expect(query_a_1 == query_a_2);
     try expect(ecs.query_builder.queries.count() == 1);
 
-    var query_b_1 = ecs.query().any(.{ Position, Velocity }).execute();
-    var query_b_2 = ecs.query().any(.{ Position, Velocity }).execute();
+    var query_b_1 = ecs.query().any(.{ .Position, .Velocity }).execute();
+    var query_b_2 = ecs.query().any(.{ .Position, .Velocity }).execute();
 
     try expect(query_b_1 == query_b_2);
     try expect(ecs.query_builder.queries.count() == 2);
 
-    var query_c_1 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
-    var query_c_2 = ecs.query().any(.{Position}).not(.{Velocity}).all(.{Health}).execute();
+    var query_c_1 = ecs.query().any(.{.Position}).not(.{.Velocity}).all(.{.Health}).execute();
+    var query_c_2 = ecs.query().any(.{.Position}).not(.{.Velocity}).all(.{.Health}).execute();
 
     try expect(query_c_1 == query_c_2);
     try expect(ecs.query_builder.queries.count() == 3);
@@ -570,14 +569,14 @@ test "Can use systems" {
     var i: u32 = 0;
     while (i < 9) : (i += 1) {
         var entity = ecs.createEmpty();
-        ecs.attach(entity, SysPosition);
-        ecs.attach(entity, SysVelocity);
+        ecs.attach(entity, .SysPosition);
+        ecs.attach(entity, .SysVelocity);
 
-        ecs.write(entity, SysPosition, .{
+        ecs.write(entity, .SysPosition, .{
             .x = 0,
             .y = 0,
         });
-        ecs.write(entity, SysVelocity, .{
+        ecs.write(entity, .SysVelocity, .{
             .x = 2,
             .y = 2,
         });
@@ -585,12 +584,12 @@ test "Can use systems" {
 
     const Sys = struct {
         fn testSystem(world: *SystemEcs) void {
-            var iterator = world.query().all(.{ SysPosition, SysVelocity }).execute().iterator();
+            var iterator = world.query().all(.{ .SysPosition, .SysVelocity }).execute().iterator();
 
             while (iterator.next()) |entity| {
-                var pos = world.read(entity, SysPosition);
-                var vel = world.read(entity, SysVelocity);
-                world.write(entity, SysPosition, .{
+                var pos = world.read(entity, .SysPosition);
+                var vel = world.read(entity, .SysVelocity);
+                world.write(entity, .SysPosition, .{
                     .x = pos.x + vel.x,
                     .y = pos.y + vel.y,
                 });
@@ -602,11 +601,11 @@ test "Can use systems" {
 
     ecs.step();
 
-    var pos_1 = ecs.read(1, SysPosition);
+    var pos_1 = ecs.read(1, .SysPosition);
     try expect(pos_1.x == 2);
     try expect(pos_1.y == 2);
 
-    var pos_8 = ecs.read(8, SysPosition);
+    var pos_8 = ecs.read(8, .SysPosition);
     try expect(pos_8.x == 2);
     try expect(pos_8.y == 2);
 }

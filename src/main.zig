@@ -2,63 +2,17 @@ const std = @import("std");
 const expect = std.testing.expect;
 const mem = @import("std").mem;
 
-const Component = @import("./component.zig").Component;
-const defineComponent = @import("./component.zig").defineComponent;
-const Archetype = @import("./archetype.zig").Archetype;
-const World = @import("./world.zig").World;
-const Entity = @import("./entity-storage.zig").Entity;
-const System = @import("./system.zig").System;
-const SparseSet = @import("./sparse-set.zig").SparseSet;
-const Query = @import("./query.zig").Query;
-const RawBitset = @import("./raw-bitset.zig").RawBitset;
-const QueryBuilder = @import("./query.zig").QueryBuilder;
+pub const Component = @import("./component.zig").Component;
+pub const Archetype = @import("./archetype.zig").Archetype;
+pub const World = @import("./world.zig").World;
+pub const Entity = @import("./entity-storage.zig").Entity;
+pub const System = @import("./system.zig").System;
+pub const SparseSet = @import("./sparse-set.zig").SparseSet;
+pub const Query = @import("./query.zig").Query;
+pub const RawBitset = @import("./raw-bitset.zig").RawBitset;
+pub const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
-    // try bench();
-    const Ecs = World(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10_000);
-
-    var world: Ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
-    var ent = world.createEmpty();
-
-    var has_position = world.has(
-        ent,
-        .Position,
-    );
-    std.debug.print("has position {}", .{has_position});
-
-    world.attach(ent, .Position);
-    var has_position_after = world.has(
-        ent,
-        .Position,
-    );
-    std.debug.print("has position {}", .{has_position_after});
-
-    world.detach(ent, .Position);
-    std.debug.print("has position {}", .{world.has(
-        ent,
-        .Position,
-    )});
-
-    world.attach(ent, .Position);
-    world.write(ent, .Position, .{
-        .x = 10,
-        .y = 5,
-    });
-    world.set(ent, .Position, .x, 100);
-    _ = world.get(ent, .Position, .x);
-    _ = world.read(ent, .Position);
-    var pack = world.pack(ent, .Position);
-    _ = pack;
-
     try bench();
 }
 
