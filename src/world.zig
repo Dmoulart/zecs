@@ -308,14 +308,15 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                     var archetype = world.archetypes.getRoot();
 
                     inline for (definition_fields) |*field| {
-                        const ComponentType = @field(definition, field.name);
-                        const component = @field(components, ComponentType.name);
+                        const component_id = comptime blk: {
+                            const component_name = @field(definition, field.name);
+                            break :blk getComponentDefinition(component_name).id;
+                        };
 
-                        if (archetype.edge.get(component.id)) |derived| {
-                            archetype = derived;
-                        } else {
-                            archetype = world.archetypes.derive(archetype, component.id);
-                        }
+                        archetype = if (archetype.edge.get(component_id)) |derived|
+                            derived
+                        else
+                            world.archetypes.derive(archetype, component_id);
                     }
 
                     type_archetype = archetype;
@@ -404,8 +405,8 @@ test "Create type" {
     }, 10);
 
     const Actor = Ecs.Type(.{
-        Position,
-        Velocity,
+        .Position,
+        .Velocity,
     });
 
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
@@ -442,14 +443,14 @@ test "Create multiple types" {
     }, 10);
 
     const Actor = Ecs.Type(.{
-        Position,
-        Velocity,
+        .Position,
+        .Velocity,
     });
 
     const Body = Ecs.Type(.{
-        Position,
-        Velocity,
-        Rotation,
+        .Position,
+        .Velocity,
+        .Rotation,
     });
 
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
