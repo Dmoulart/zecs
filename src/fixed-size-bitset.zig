@@ -4,9 +4,7 @@ const expect = @import("std").testing.expect;
 const RAW_BITSET_CAPACITY: FixedSizeBitset.IntType = 40;
 const RAW_BITSET_WIDTH: FixedSizeBitset.IntType = 64;
 
-//
-// Todo : rename size and count, add capacity in options, (make this comptime ?)
-//
+// Make this not so fixed ?
 pub const FixedSizeBitset = struct {
     const Self = @This();
     const IntType = usize;

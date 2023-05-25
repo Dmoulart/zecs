@@ -1192,6 +1192,7 @@ test "Can run systems" {
             while (iterator.next()) |entity| {
                 var pos = context.read(entity, .Position);
                 var vel = context.read(entity, .Velocity);
+
                 context.write(entity, .Position, .{
                     .x = pos.x + vel.x,
                     .y = pos.y + vel.y,
