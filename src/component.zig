@@ -122,13 +122,10 @@ pub fn ComponentStorage(comptime component: anytype) type {
             self.data.deinit(gpa);
         }
 
-        pub fn copy(self: *Self, entity: Entity) Schema {
-            var result: Schema = undefined;
+        pub fn copy(self: *Self, entity: Entity, dest: *Schema) void {
             inline for (fields) |field_info| {
-                @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
+                @field(dest, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }
-
-            return result;
         }
 
         // this is a copy op not a read op

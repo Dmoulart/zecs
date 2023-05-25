@@ -234,6 +234,19 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
+        pub fn copy(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentName,
+            dist: *@TypeOf(getComponentDefinition(component_name)).Schema,
+        ) void {
+            assert(self.contains(entity));
+            assert(self.has(entity, component_name));
+
+            var storage = getComponent(component_name).storage;
+            storage.copy(entity, dist);
+        }
+
         pub fn read(
             self: *Self,
             entity: Entity,

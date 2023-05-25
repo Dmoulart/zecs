@@ -29,7 +29,7 @@ pub fn bench() !void {
 
     run(readTwoComponentsProp);
 
-    run(updateWith3Systems);
+    run(updateWith1System);
 }
 
 fn run(comptime function: anytype) void {
@@ -336,7 +336,7 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.end();
 }
 
-fn updateWith3Systems(comptime n: u32) !void {
+fn updateWith1System(comptime n: u32) !void {
     const Position = Component("Position", struct {
         x: f32,
         y: f32,
@@ -364,19 +364,22 @@ fn updateWith3Systems(comptime n: u32) !void {
             pos.y.* += vel.y;
         }
         fn moveSystem(ctx: *Ecs) void {
-            var query = ctx.query().all(.{ .Position, .Velocity }).execute();
-            query.each(@This().move);
+            // var query = ctx.query().all(.{ .Position, .Velocity }).execute();
+            // query.each(@This().move);
 
-            // var iterator = ecs.query().all(.{ Position, Velocity }).execute().iterator();
-            // while (iterator.next()) |entity| {
-            //     var pos = ecs.read(entity, Position);
-            //     var vel = ecs.read(entity, Velocity);
+            var iterator = ctx.query().all(.{ .Position, .Velocity }).execute().iterator();
+            var pos: Position.Schema = undefined;
+            var vel: Velocity.Schema = undefined;
 
-            //     ecs.write(entity, Position, .{
-            //         .x = pos.x + vel.x,
-            //         .y = pos.y + vel.y,
-            //     });
-            // }
+            while (iterator.next()) |entity| {
+                ctx.copy(entity, .Position, &pos);
+                ctx.copy(entity, .Velocity, &vel);
+
+                ctx.write(entity, .Position, .{
+                    .x = pos.x + vel.x,
+                    .y = pos.y + vel.y,
+                });
+            }
         }
     };
 
