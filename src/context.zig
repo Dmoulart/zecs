@@ -59,8 +59,6 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         });
     };
 
-    const ComponentName = meta.FieldEnum(ContextComponents);
-
     return struct {
         const Self = @This();
 
@@ -226,7 +224,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self: *Self,
             entity: Entity,
             comptime component_name: ComponentName,
-        ) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
+        ) Packed(ComponentSchema(component_name)) {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -238,7 +236,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self: *Self,
             entity: Entity,
             comptime component_name: ComponentName,
-            dist: *@TypeOf(getComponentDefinition(component_name)).Schema,
+            dist: *ComponentSchema(component_name),
         ) void {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
@@ -251,7 +249,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self: *Self,
             entity: Entity,
             comptime component_name: ComponentName,
-        ) @TypeOf(getComponentDefinition(component_name)).Schema {
+        ) ComponentSchema(component_name) {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -375,9 +373,14 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 }
             };
         }
+        const ComponentName = meta.FieldEnum(ContextComponents);
 
         pub fn ComponentPropField(comptime component_name: ComponentName) type {
             return meta.FieldEnum(@TypeOf(getComponentDefinition(component_name)).Schema);
+        }
+
+        pub fn ComponentSchema(comptime component_name: ComponentName) type {
+            return @TypeOf(getComponentDefinition(component_name)).Schema;
         }
     };
 }
