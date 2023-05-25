@@ -267,7 +267,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             assert(self.has(entity, component_name));
 
             var storage = getComponent(component_name).storage;
-            return storage.get(entity, @tagName(prop));
+            return storage.get(entity, comptime @tagName(prop));
         }
 
         pub fn set(

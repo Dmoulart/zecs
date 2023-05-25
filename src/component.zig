@@ -90,12 +90,12 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         const Schema = component.Schema;
 
-        // used to get type infos more easily.. remove when better at zig meta programming
-        pub const schema_instance: component.Schema = undefined;
-
         const ComponentMultiArrayList = std.MultiArrayList(component.Schema);
 
         pub const Field = std.meta.FieldEnum(component.Schema);
+
+        // used to get type infos more easily.. remove when better at zig meta programming
+        pub const schema_instance: component.Schema = undefined;
 
         const fields = std.meta.fields(component.Schema);
 
