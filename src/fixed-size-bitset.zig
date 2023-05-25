@@ -1,44 +1,42 @@
 const std = @import("std");
 const expect = @import("std").testing.expect;
 
-const RAW_BITSET_CAPACITY: RawBitset.Type = 40;
-const RAW_BITSET_WIDTH: RawBitset.Type = 64;
+const RAW_BITSET_CAPACITY: FixedSizeBitset.IntType = 40;
+const RAW_BITSET_WIDTH: FixedSizeBitset.IntType = 64;
 
 //
-// Todo : rename size and count, add capacity in options, (make this comptime ?) Rename this fixed bitset ?
+// Todo : rename size and count, add capacity in options, (make this comptime ?)
 //
-pub const RawBitset = struct {
+pub const FixedSizeBitset = struct {
     const Self = @This();
-    const Type = usize;
-    const Shift = std.math.Log2Int(Type);
+    const IntType = usize;
+    const Shift = std.math.Log2Int(IntType);
 
-    size: Type,
+    count: IntType = 0,
 
-    count: Type = 0,
+    data: [RAW_BITSET_CAPACITY]IntType,
 
-    data: [RAW_BITSET_CAPACITY]Type,
+    const FixedSizeBitsetOptions = struct {};
 
-    const RawBitsetOptions = struct {};
-
-    pub fn init(options: RawBitsetOptions) Self {
+    pub fn init(options: FixedSizeBitsetOptions) Self {
         _ = options;
-        var data: [RAW_BITSET_CAPACITY]Type = undefined;
-        std.mem.set(Type, data[0..], 0);
+        var data: [RAW_BITSET_CAPACITY]IntType = undefined;
 
-        return RawBitset{
-            .size = 0,
+        std.mem.set(IntType, data[0..], 0);
+
+        return FixedSizeBitset{
             .data = data,
         };
     }
 
     pub fn deinit(self: *Self) void {
         _ = self;
-        // Delete later
+        // Deletion ?
     }
 
     pub fn set(
         self: *Self,
-        bit: Type,
+        bit: IntType,
     ) void {
         var index = maskIndex(bit);
 
@@ -49,7 +47,7 @@ pub const RawBitset = struct {
 
     pub fn unset(
         self: *Self,
-        bit: Type,
+        bit: IntType,
     ) void {
         var index = maskIndex(bit);
 
@@ -71,7 +69,7 @@ pub const RawBitset = struct {
         }
     }
 
-    pub fn has(self: *Self, bit: Type) bool {
+    pub fn has(self: *Self, bit: IntType) bool {
         var index = maskIndex(bit);
 
         if (index > self.count) return false;
@@ -82,10 +80,10 @@ pub const RawBitset = struct {
     pub fn contains(self: *Self, other: *Self) bool {
         if (self.count < other.count) return false;
 
-        var min_size = @min(self.count, other.count);
+        var min_count = @min(self.count, other.count);
         var i: usize = 0;
 
-        while (i <= min_size) : (i += 1) {
+        while (i <= min_count) : (i += 1) {
             var mask = self.data[i];
             var otherMask = other.data[i];
 
@@ -98,9 +96,9 @@ pub const RawBitset = struct {
     }
 
     pub fn intersects(self: *Self, other: *Self) bool {
-        var min_size = @min(self.count, other.count);
+        var min_count = @min(self.count, other.count);
         var i: usize = 0;
-        while (i <= min_size) : (i += 1) {
+        while (i <= min_count) : (i += 1) {
             var mask = self.data[i];
             var otherMask = other.data[i];
             if ((mask & otherMask) > 0) {
@@ -112,26 +110,25 @@ pub const RawBitset = struct {
     }
 
     pub fn clone(self: *Self) Self {
-        var data: [RAW_BITSET_CAPACITY]Type = undefined;
-        std.mem.copy(Type, data[0..], &self.data);
+        var data: [RAW_BITSET_CAPACITY]IntType = undefined;
+        std.mem.copy(IntType, data[0..], &self.data);
 
         return Self{
-            .size = data.len,
             .data = data,
         };
     }
 };
 
-fn maskBit(index: usize) RawBitset.Type {
-    return @as(RawBitset.Type, 1) << @truncate(RawBitset.Shift, index);
+fn maskBit(index: usize) FixedSizeBitset.IntType {
+    return @as(FixedSizeBitset.IntType, 1) << @truncate(FixedSizeBitset.Shift, index);
 }
 
 fn maskIndex(index: usize) usize {
-    return index >> @bitSizeOf(RawBitset.Shift);
+    return index >> @bitSizeOf(FixedSizeBitset.Shift);
 }
 
 test "Can set bit" {
-    var set = RawBitset.init(.{});
+    var set = FixedSizeBitset.init(.{});
     set.set(1);
 
     try expect(!set.has(0));
@@ -139,7 +136,7 @@ test "Can set bit" {
     try expect(!set.has(2));
 }
 test "Can unset bit" {
-    var set = RawBitset.init(.{});
+    var set = FixedSizeBitset.init(.{});
 
     set.set(1);
     set.set(2);
@@ -151,9 +148,9 @@ test "Can unset bit" {
     try expect(set.has(2));
 }
 test "Can test one bitset contains the other" {
-    var a = RawBitset.init(.{});
+    var a = FixedSizeBitset.init(.{});
 
-    var b = RawBitset.init(.{});
+    var b = FixedSizeBitset.init(.{});
 
     a.set(1);
     a.set(2);
@@ -166,11 +163,11 @@ test "Can test one bitset contains the other" {
     try expect(!b.contains(&a));
 }
 test "Can test one bitset intersects the other" {
-    var a = RawBitset.init(.{});
+    var a = FixedSizeBitset.init(.{});
 
-    var b = RawBitset.init(.{});
+    var b = FixedSizeBitset.init(.{});
 
-    var c = RawBitset.init(.{});
+    var c = FixedSizeBitset.init(.{});
 
     a.set(1);
     a.set(2);
@@ -187,7 +184,7 @@ test "Can test one bitset intersects the other" {
     try expect(!b.intersects(&c));
 }
 test "Can clone itself" {
-    var a = RawBitset.init(.{});
+    var a = FixedSizeBitset.init(.{});
 
     a.set(1);
     a.set(2);
@@ -200,7 +197,7 @@ test "Can clone itself" {
 }
 
 test "Can shrink" {
-    var a = RawBitset.init(.{});
+    var a = FixedSizeBitset.init(.{});
 
     a.set(1);
     a.set(2);

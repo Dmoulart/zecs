@@ -4,7 +4,7 @@ const Archetype = @import("./archetype.zig").Archetype;
 const Context = @import("./context.zig").Context;
 const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
-const RawBitset = @import("./raw-bitset.zig").RawBitset;
+const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 const String = @import("./string.zig").String;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
@@ -86,12 +86,12 @@ pub const QueryMatcher = struct {
 
     op_type: QueryMatcherType,
 
-    mask: RawBitset,
+    mask: FixedSizeBitset,
 
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
     }
-    pub fn match(self: *Self, bitset: *RawBitset, other: *RawBitset) bool {
+    pub fn match(self: *Self, bitset: *FixedSizeBitset, other: *FixedSizeBitset) bool {
         return switch (self.op_type) {
             .any => bitset.intersects(other),
             .all => other.contains(bitset),
@@ -173,7 +173,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
         fn createMatcher(self: *Self, comptime componentsTypes: anytype, comptime matcher_type: QueryMatcherType) void {
             const components = comptime std.meta.fields(@TypeOf(componentsTypes));
 
-            var mask = RawBitset.init(.{});
+            var mask = FixedSizeBitset.init(.{});
 
             var matcher_type_str = std.fmt.comptimePrint("{d}", .{@enumToInt(matcher_type)});
 

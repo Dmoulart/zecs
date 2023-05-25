@@ -1,6 +1,5 @@
 const std = @import("std");
 const Archetype = @import("./archetype.zig").Archetype;
-const SparseMap = @import("./sparse-map.zig").SparseMap;
 const SparseArray = @import("./sparse-array.zig").SparseArray;
 const assert = @import("std").debug.assert;
 

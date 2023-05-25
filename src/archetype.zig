@@ -2,14 +2,13 @@ const std = @import("std");
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const SparseSet = @import("./sparse-set.zig").SparseSet;
-const SparseMap = @import("./sparse-map.zig").SparseMap;
 const SparseArray = @import("./sparse-array.zig").SparseArray;
-const RawBitset = @import("./raw-bitset.zig").RawBitset;
+const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 const Entity = @import("./entity-storage.zig").Entity;
 
 const DEFAULT_WORLD_CAPACITY = @import("./context.zig").DEFAULT_WORLD_CAPACITY;
 
-pub const ArchetypeMask = RawBitset;
+pub const ArchetypeMask = FixedSizeBitset;
 
 const ARCHETYPE_EDGE_CAPACITY: u32 = 10_000;
 
@@ -78,11 +77,11 @@ pub const Archetype = struct {
     }
 };
 
-fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) RawBitset {
+fn generateComponentsMask(comps: anytype, alloc: std.mem.Allocator) FixedSizeBitset {
     _ = alloc;
     const fields = std.meta.fields(@TypeOf(comps));
 
-    var mask: RawBitset = RawBitset.init(.{});
+    var mask: FixedSizeBitset = FixedSizeBitset.init(.{});
 
     inline for (fields) |field| {
         var comp = @field(comps, field.name);

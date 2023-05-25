@@ -10,7 +10,10 @@ pub const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = 1000;
 pub const ArchetypeStorage = struct {
     const Self = @This();
 
-    const ArchetypeStorageOptions = struct { capacity: ?u32, archetype_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY };
+    const ArchetypeStorageOptions = struct {
+        capacity: ?u32,
+        archetype_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
+    };
 
     allocator: std.mem.Allocator,
 

@@ -9,7 +9,7 @@ pub const Entity = @import("./entity-storage.zig").Entity;
 pub const System = @import("./system.zig").System;
 pub const SparseSet = @import("./sparse-set.zig").SparseSet;
 pub const Query = @import("./query.zig").Query;
-pub const RawBitset = @import("./raw-bitset.zig").RawBitset;
+pub const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 pub const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
