@@ -185,11 +185,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.entities.delete(entity);
         }
 
-        pub fn has(
-            self: *Self,
-            entity: Entity,
-            comptime component_name: ComponentName,
-        ) bool {
+        pub fn has(self: *Self, entity: Entity, comptime component_name: ComponentName) bool {
             var archetype = self.entities.getArchetype(entity) orelse unreachable;
             var component = comptime getComponentDefinition(component_name);
 
@@ -200,11 +196,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return self.entities.contains(entity);
         }
 
-        pub fn attach(
-            self: *Self,
-            entity: Entity,
-            comptime component_name: ComponentName,
-        ) void {
+        pub fn attach(self: *Self, entity: Entity, comptime component_name: ComponentName) void {
             assert(!self.has(entity, component_name));
 
             self.toggleComponent(entity, component_name);
@@ -245,7 +237,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             storage.copy(entity, dist);
         }
 
-        pub fn read(
+        pub fn clone(
             self: *Self,
             entity: Entity,
             comptime component_name: ComponentName,
@@ -254,7 +246,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             assert(self.has(entity, component_name));
 
             var storage = getComponent(component_name).storage;
-            return storage.read(entity);
+            return storage.clone(entity);
         }
 
         pub fn write(self: *Self, entity: Entity, comptime component_name: ComponentName, data: anytype) void {
@@ -272,7 +264,10 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             comptime component_name: ComponentName,
             comptime prop: ComponentPropField(component_name),
         ) *@TypeOf(
-            @field(ComponentStorage(@TypeOf(getComponentDefinition(component_name))).schema_instance, @tagName(prop)),
+            @field(
+                ComponentStorage(@TypeOf(getComponentDefinition(component_name))).schema_instance,
+                @tagName(prop),
+            ),
         ) {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
@@ -1081,7 +1076,7 @@ test "Can write component data" {
     ecs.attach(entity, .Position);
     ecs.write(entity, .Position, .{ .x = 10, .y = 20 });
 
-    var data = ecs.read(entity, .Position);
+    var data = ecs.clone(entity, .Position);
     try expect(data.x == 10);
     try expect(data.y == 20);
 }
@@ -1129,7 +1124,7 @@ test "Can set component prop with packed component" {
     pos.x.* = 10;
     pos.y.* = 20;
 
-    var read_pos = ecs.read(entity, .Position);
+    var read_pos = ecs.clone(entity, .Position);
     try expect(read_pos.x == 10);
     try expect(read_pos.y == 20);
 }
@@ -1206,8 +1201,8 @@ test "Can run systems" {
             var iterator = context.query().all(.{ .Position, .Velocity }).execute().iterator();
 
             while (iterator.next()) |entity| {
-                var pos = context.read(entity, .Position);
-                var vel = context.read(entity, .Velocity);
+                var pos = context.clone(entity, .Position);
+                var vel = context.clone(entity, .Velocity);
 
                 context.write(entity, .Position, .{
                     .x = pos.x + vel.x,
@@ -1221,11 +1216,11 @@ test "Can run systems" {
 
     ecs.step();
 
-    var pos_1 = ecs.read(1, .Position);
+    var pos_1 = ecs.clone(1, .Position);
     try expect(pos_1.x == 2);
     try expect(pos_1.y == 2);
 
-    var pos_8 = ecs.read(8, .Position);
+    var pos_8 = ecs.clone(8, .Position);
     try expect(pos_8.x == 2);
     try expect(pos_8.y == 2);
 }

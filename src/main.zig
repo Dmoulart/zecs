@@ -258,12 +258,12 @@ fn readTwoComponents(comptime n: u32) !void {
 
     Timer.start();
     while (e < n) : (e += 1) {
-        var pos = ecs.read(e, .Position);
+        var pos = ecs.pack(e, .Position);
 
-        var vel = ecs.read(e, .Velocity);
+        var vel = ecs.pack(e, .Velocity);
         _ = vel;
         // If we are not doing this the compiler will remove the loop in releas fast builds
-        result += pos.x;
+        result += pos.x.*;
     }
     Timer.end();
 }
@@ -359,27 +359,28 @@ fn updateWith1System(comptime n: u32) !void {
     const Sys = struct {
         fn move(ctx: *Ecs, entity: Entity) void {
             var pos = ctx.pack(entity, .Position);
-            var vel = ctx.read(entity, .Velocity);
-            pos.x.* += vel.x;
-            pos.y.* += vel.y;
+            var vel = ctx.pack(entity, .Velocity);
+            pos.x.* += vel.x.*;
+            pos.y.* += vel.y.*;
         }
+
         fn moveSystem(ctx: *Ecs) void {
-            // var query = ctx.query().all(.{ .Position, .Velocity }).execute();
-            // query.each(@This().move);
+            var query = ctx.query().all(.{ .Position, .Velocity }).execute();
+            query.each(@This().move);
 
-            var iterator = ctx.query().all(.{ .Position, .Velocity }).execute().iterator();
-            var pos: Position.Schema = undefined;
-            var vel: Velocity.Schema = undefined;
+            // var iterator = ctx.query().all(.{ .Position, .Velocity }).execute().iterator();
+            // var pos: Position.Schema = undefined;
+            // var vel: Velocity.Schema = undefined;
 
-            while (iterator.next()) |entity| {
-                ctx.copy(entity, .Position, &pos);
-                ctx.copy(entity, .Velocity, &vel);
+            // while (iterator.next()) |entity| {
+            //     ctx.copy(entity, .Position, &pos);
+            //     ctx.copy(entity, .Velocity, &vel);
 
-                ctx.write(entity, .Position, .{
-                    .x = pos.x + vel.x,
-                    .y = pos.y + vel.y,
-                });
-            }
+            //     ctx.write(entity, .Position, .{
+            //         .x = pos.x + vel.x,
+            //         .y = pos.y + vel.y,
+            //     });
+            // }
         }
     };
 
