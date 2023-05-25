@@ -422,22 +422,18 @@ test "Create type" {
 }
 
 test "Create multiple types" {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Rotation = Component("Rotation", struct {
-        degrees: i8,
-    });
-
     const Ecs = World(.{
-        Position,
-        Velocity,
-        Rotation,
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Rotation", struct {
+            degrees: i8,
+        }),
     }, 10);
 
     const Actor = Ecs.Type(.{

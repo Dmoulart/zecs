@@ -63,15 +63,7 @@ pub fn SparseSet(comptime T: type) type {
         pub fn remove(self: *Self, value: T) void {
             if (!self.has(value)) return;
 
-            self.count -= 1;
-
-            var last = self.values[self.count];
-
-            if (last == value) return;
-
-            var index = self.indices[value];
-            self.values[index] = last;
-            self.indices[last] = index;
+            self.removeUnsafe(value);
         }
 
         pub fn removeUnsafe(self: *Self, value: T) void {
