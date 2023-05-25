@@ -105,12 +105,12 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         cached_items: SchemaItems = undefined,
 
-        read_data_cache: Schema = undefined,
+        // read_data_cache: Schema = undefined,
 
         pub fn setup(self: *Self, gpa: std.mem.Allocator, capacity: u32) !void {
             _ = try self.data.ensureTotalCapacity(gpa, capacity + 1);
             _ = try self.data.resize(gpa, capacity + 1);
-            
+
             // Cache fields pointers
             self.cached_slice = self.data.slice();
             inline for (fields) |field_info, i| {

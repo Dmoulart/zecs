@@ -505,7 +505,7 @@ test "Create multiple types" {
     try expect(ecs.has(ent2, .Rotation));
 }
 
-test "write component data" {
+test "Write component data" {
     const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
