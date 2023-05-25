@@ -64,9 +64,11 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     return struct {
         const Self = @This();
 
+        // The allocator used to allocate the components storage
         pub var context_allocator: std.mem.Allocator = undefined;
 
         // Comptime immutable components definitions
+        // @todo: create a whole other objects ?
         pub const components_definitions: ContextComponents = ContextComponents{};
 
         // Runtime mutable components
@@ -74,6 +76,8 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         // States the runtime components have been initialized
         pub var components_are_ready = false;
+
+        var entity_counter: Entity = 0;
 
         allocator: std.mem.Allocator,
 
@@ -167,12 +171,16 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         pub fn createEmpty(self: *Self) Entity {
-            return self.entities.create(self.archetypes.getRoot());
+            return self.entities.create(self.archetypes.getRoot(), &entity_counter);
         }
 
         pub fn create(self: *Self, comptime entity_type: anytype) Entity {
             assert(entity_type.type_archetype != null);
-            return self.entities.create(entity_type.type_archetype orelse unreachable);
+
+            return self.entities.create(
+                entity_type.type_archetype orelse unreachable,
+                &entity_counter,
+            );
         }
 
         pub fn deleteEntity(self: *Self, entity: Entity) void {
@@ -214,7 +222,11 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             self.toggleComponent(entity, component_name);
         }
 
-        pub fn pack(self: *Self, entity: Entity, comptime component_name: ComponentName) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
+        pub fn pack(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentName,
+        ) Packed(@TypeOf(getComponentDefinition(component_name)).Schema) {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -222,7 +234,11 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             return storage.pack(entity);
         }
 
-        pub fn read(self: *Self, entity: Entity, comptime component_name: ComponentName) @TypeOf(getComponentDefinition(component_name)).Schema {
+        pub fn read(
+            self: *Self,
+            entity: Entity,
+            comptime component_name: ComponentName,
+        ) @TypeOf(getComponentDefinition(component_name)).Schema {
             assert(self.contains(entity));
             assert(self.has(entity, component_name));
 
@@ -455,6 +471,53 @@ test "Can resize" {
     _ = ecs.createEmpty();
 
     try expect(ecs.entities.capacity == 4 * 2); // grow factor of 2?
+}
+
+test "Can create multiple worlds" {
+    const Ecs = Context(.{
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
+    }, 4);
+
+    var arena_1: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena_2: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_1.deinit();
+    defer arena_2.deinit();
+
+    try Ecs.setup(arena_1.child_allocator);
+    defer Ecs.unsetup();
+
+    var world_1 = try Ecs.init(.{ .allocator = arena_1.child_allocator });
+    var world_2 = try Ecs.init(.{ .allocator = arena_2.child_allocator });
+    defer world_1.deinit();
+    defer world_2.deinit();
+
+    var ent_1 = world_1.createEmpty();
+    var ent_2 = world_2.createEmpty();
+
+    try expect(ent_1 == 1);
+    try expect(ent_2 == 2);
+
+    try expect(world_1.contains(ent_1));
+    try expect(!world_1.contains(ent_2));
+
+    try expect(!world_2.contains(ent_1));
+    try expect(world_2.contains(ent_2));
+
+    world_1.attach(ent_1, .Position);
+    world_2.attach(ent_2, .Velocity);
+
+    try expect(world_1.has(ent_1, .Position));
+    try expect(!world_1.has(ent_1, .Velocity));
+
+    try expect(world_2.has(ent_2, .Velocity));
+    try expect(!world_2.has(ent_2, .Position));
 }
 
 test "Can recycle Entity" {

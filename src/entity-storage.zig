@@ -5,7 +5,7 @@ const assert = @import("std").debug.assert;
 
 pub const DEFAULT_ENTITIES_STORAGE_CAPACITY = 10_000;
 
-var global_entity_counter: Entity = 0;
+// var global_entity_counter: Entity = 0;
 
 pub const Entity = u32;
 
@@ -47,11 +47,9 @@ pub const EntityStorage = struct {
     pub fn deinit(self: *Self) void {
         self.all.deinit();
         self.deleted.deinit();
-        // where should we put this?
-        global_entity_counter = 0;
     }
 
-    pub fn create(self: *Self, archetype: *Archetype) Entity {
+    pub fn create(self: *Self, archetype: *Archetype, entity_counter: *Entity) Entity {
         if (self.count == self.capacity) {
             self.capacity += self.getGrowFactor();
         }
@@ -61,8 +59,8 @@ pub const EntityStorage = struct {
         if (self.deleted.popOrNull()) |ent| {
             created_entity = ent;
         } else {
-            global_entity_counter += 1;
-            created_entity = global_entity_counter;
+            entity_counter.* += 1;
+            created_entity = entity_counter.*;
         }
 
         archetype.entities.add(created_entity);
@@ -75,8 +73,6 @@ pub const EntityStorage = struct {
     }
 
     pub fn delete(self: *Self, entity: Entity) void {
-        // // assert(self.contains(entity));
-
         var archetype = self.all.getUnsafe(entity);
 
         archetype.entities.removeUnsafe(entity);
