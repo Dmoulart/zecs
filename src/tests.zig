@@ -289,20 +289,20 @@ test "Query update reactively" {
     var query = world.query().all(.{.Position}).execute();
     // defer query.deinit();
 
-    try expect(query.has(ent));
-    try expect(!query.has(ent2));
+    try expect(query.contains(ent));
+    try expect(!query.contains(ent2));
 
     var query2 = world.query().all(.{.Velocity}).execute();
     defer query2.deinit();
 
-    try expect(!query2.has(ent));
-    try expect(query2.has(ent2));
+    try expect(!query2.contains(ent));
+    try expect(query2.contains(ent2));
 
     world.detach(ent, .Position);
     world.attach(ent, .Velocity);
 
-    try expect(query2.has(ent));
-    try expect(!query.has(ent));
+    try expect(query2.contains(ent));
+    try expect(!query.contains(ent));
 }
 
 test "Can query multiple components" {
@@ -336,19 +336,19 @@ test "Can query multiple components" {
 
     var query = world.query().all(.{ .Position, .Velocity }).execute();
 
-    try expect(query.has(ent));
-    try expect(!query.has(ent2));
+    try expect(query.contains(ent));
+    try expect(!query.contains(ent2));
 
     var query2 = world.query().all(.{.Position}).execute();
     defer query2.deinit();
 
-    try expect(query2.has(ent));
-    try expect(query2.has(ent2));
+    try expect(query2.contains(ent));
+    try expect(query2.contains(ent2));
 
     world.attach(ent2, .Velocity);
 
-    try expect(query.has(ent2));
-    try expect(query2.has(ent2));
+    try expect(query.contains(ent2));
+    try expect(query2.contains(ent2));
 }
 
 test "Can iterate over query using iterator " {
@@ -428,8 +428,8 @@ test "Can use the all query operator" {
 
     var query = world.query().all(.{ .Position, .Velocity }).execute();
 
-    try expect(query.has(ent));
-    try expect(query.has(ent2));
+    try expect(query.contains(ent));
+    try expect(query.contains(ent2));
 }
 
 test "Can use the any query operator" {
@@ -547,7 +547,7 @@ test "Can use the none operator" {
 
     var query = world.query().none(.{ .Comp1, .Comp2 }).execute();
 
-    try expect(!query.has(ent));
+    try expect(!query.contains(ent));
 }
 
 test "Can combine query operators" {
@@ -605,8 +605,8 @@ test "Can combine query operators" {
         .none(.{ .Comp1, .Comp4 })
         .execute();
 
-    try expect(query.has(ent));
-    try expect(!query.has(ent2));
-    try expect(query.has(ent3));
-    try expect(!query.has(ent4));
+    try expect(query.contains(ent));
+    try expect(!query.contains(ent2));
+    try expect(query.contains(ent3));
+    try expect(!query.contains(ent4));
 }

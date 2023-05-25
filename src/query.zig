@@ -72,7 +72,7 @@ pub fn Query(comptime WorldType: anytype) type {
             }
         }
 
-        pub fn has(self: *Self, entity: Entity) bool {
+        pub fn contains(self: *Self, entity: Entity) bool {
             for (self.archetypes.items) |arch| {
                 if (arch.entities.has(entity)) return true;
             }
