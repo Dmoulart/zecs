@@ -1,7 +1,7 @@
 const std = @import("std");
 const print = @import("std").debug.print;
 const Archetype = @import("./archetype.zig").Archetype;
-const World = @import("./world.zig").World;
+const Context = @import("./context.zig").Context;
 const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
@@ -18,7 +18,7 @@ pub const QueryMatcherType = enum {
 
 pub const QueryHash = String;
 
-pub fn Query(comptime WorldType: anytype) type {
+pub fn Query(comptime ContextType: anytype) type {
     return struct {
         const Self = @This();
 
@@ -28,14 +28,14 @@ pub fn Query(comptime WorldType: anytype) type {
 
         allocator: std.mem.Allocator,
 
-        world: *WorldType,
+        context: *ContextType,
 
         pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
             return Self{
                 .allocator = allocator,
                 .matchers = matchers,
                 .archetypes = std.ArrayList(*Archetype).init(allocator),
-                .world = undefined,
+                .context = undefined,
             };
         }
 
@@ -51,16 +51,16 @@ pub fn Query(comptime WorldType: anytype) type {
             }
         }
 
-        pub fn each(self: *Self, function: *const fn (*WorldType, Entity) void) void {
+        pub fn each(self: *Self, function: *const fn (*ContextType, Entity) void) void {
             for (self.archetypes.items) |archetype| {
                 for (archetype.entities.toSlice()) |e| {
-                    function(self.world, e);
+                    function(self.context, e);
                 }
             }
         }
 
-        fn execute(self: *Self, world: anytype) void {
-            archetypes_loop: for (world.archetypes.all.items) |*archetype| {
+        fn execute(self: *Self, context: anytype) void {
+            archetypes_loop: for (context.archetypes.all.items) |*archetype| {
                 for (self.matchers.items) |*matcher| {
                     const mask = &matcher.mask;
 
@@ -101,7 +101,7 @@ pub const QueryMatcher = struct {
     }
 };
 
-pub fn QueryBuilder(comptime WorldType: anytype) type {
+pub fn QueryBuilder(comptime ContextType: anytype) type {
     return struct {
         const Self = @This();
 
@@ -112,9 +112,9 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
         // Todo: make comptime string ds
         prepared_query_hash: String,
 
-        queries: std.hash_map.StringHashMap(Query(WorldType)),
+        queries: std.hash_map.StringHashMap(Query(ContextType)),
 
-        world: *WorldType,
+        context: *ContextType,
 
         pub fn init(allocator: std.mem.Allocator) !Self {
             var prepared_query_hash = String.init(allocator);
@@ -122,8 +122,8 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             return Self{
                 .allocator = allocator,
                 .prepared_query_matchers = std.ArrayList(QueryMatcher).init(allocator),
-                .queries = std.hash_map.StringHashMap(Query(WorldType)).init(allocator),
-                .world = undefined,
+                .queries = std.hash_map.StringHashMap(Query(ContextType)).init(allocator),
+                .context = undefined,
                 .prepared_query_hash = prepared_query_hash,
             };
         }
@@ -182,7 +182,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
 
             inline for (components) |field| {
                 const ComponentType = comptime @field(componentsTypes, field.name);
-                const component = comptime WorldType.getComponentDefinition(ComponentType);
+                const component = comptime ContextType.getComponentDefinition(ComponentType);
                 mask.set(component.id);
 
                 var component_id_str = std.fmt.comptimePrint("{d}", .{component.id});
@@ -195,7 +195,7 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
             }) catch unreachable;
         }
 
-        pub fn execute(self: *Self) *Query(WorldType) {
+        pub fn execute(self: *Self) *Query(ContextType) {
             const hash = self.prepared_query_hash.str();
 
             var query = self.queries.getOrPut(hash) catch unreachable;
@@ -205,14 +205,14 @@ pub fn QueryBuilder(comptime WorldType: anytype) type {
                 return query.value_ptr;
             }
 
-            var created_query = Query(WorldType).init(
+            var created_query = Query(ContextType).init(
                 self.prepared_query_matchers.clone() catch unreachable,
                 self.allocator,
             );
 
-            created_query.world = self.world;
+            created_query.context = self.context;
 
-            created_query.execute(self.world);
+            created_query.execute(self.context);
 
             query.value_ptr.* = created_query;
 

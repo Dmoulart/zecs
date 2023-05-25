@@ -7,7 +7,7 @@ const SparseArray = @import("./sparse-array.zig").SparseArray;
 const RawBitset = @import("./raw-bitset.zig").RawBitset;
 const Entity = @import("./entity-storage.zig").Entity;
 
-const DEFAULT_WORLD_CAPACITY = @import("./world.zig").DEFAULT_WORLD_CAPACITY;
+const DEFAULT_WORLD_CAPACITY = @import("./context.zig").DEFAULT_WORLD_CAPACITY;
 
 pub const ArchetypeMask = RawBitset;
 

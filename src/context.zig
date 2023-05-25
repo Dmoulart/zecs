@@ -21,8 +21,8 @@ const System = @import("./system.zig").System;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
-pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
-    const WorldComponents = comptime blk: {
+pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
+    const ContextComponents = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
         const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
 
@@ -54,16 +54,16 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         });
     };
 
-    const ComponentName = meta.FieldEnum(WorldComponents);
+    const ComponentName = meta.FieldEnum(ContextComponents);
 
     return struct {
         const Self = @This();
 
         // Comptime immutable components definitions
-        pub const components_definitions: WorldComponents = WorldComponents{};
+        pub const components_definitions: ContextComponents = ContextComponents{};
 
         // Runtime mutable components
-        pub var components: WorldComponents = WorldComponents{};
+        pub var components: ContextComponents = ContextComponents{};
 
         // States the runtime components have been initialized
         pub var components_are_ready = false;
@@ -80,12 +80,12 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         root: *Archetype,
 
-        const WorldOptions = struct {
+        const ContextOptions = struct {
             allocator: std.mem.Allocator,
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
-        pub fn init(options: WorldOptions) !Self {
+        pub fn init(options: ContextOptions) !Self {
             var archetypes_storage_capacity = options.archetypes_capacity;
 
             var archetypes = try ArchetypeStorage.init(.{
@@ -98,7 +98,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 .capacity = capacity,
             });
 
-            var world = Self{
+            var context = Self{
                 .allocator = options.allocator,
                 .archetypes = archetypes,
                 .entities = entities,
@@ -111,27 +111,27 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
             // Init context component
             if (!components_are_ready) {
-                components = WorldComponents{};
+                components = ContextComponents{};
 
                 // Ensure components capacity
-                const world_components = &std.meta.fields(WorldComponents);
-                inline for (world_components.*) |*component_field| {
+                const context_components = &std.meta.fields(ContextComponents);
+                inline for (context_components.*) |*component_field| {
                     var component = &@field(components, component_field.name);
 
                     component.storage = ComponentStorage(@TypeOf(@field(components, component_field.name))){};
-                    component.storage.setup(world.allocator, capacity) catch unreachable;
+                    component.storage.setup(context.allocator, capacity) catch unreachable;
 
                     components_are_ready = true;
                 }
             }
 
-            return world;
+            return context;
         }
 
-        // Relation between components and world instance is not clear at all. Ultra footgun
+        // Relation between components and context instance is not clear at all. Ultra footgun
         pub fn contextDeinit(allocator: std.mem.Allocator) void {
-            const world_components = &std.meta.fields(@TypeOf(components));
-            inline for (world_components.*) |*component_field| {
+            const context_components = &std.meta.fields(@TypeOf(components));
+            inline for (context_components.*) |*component_field| {
                 var component_instance = @field(components, component_field.name);
                 component_instance.deinit(allocator);
             }
@@ -249,8 +249,8 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         pub fn query(self: *Self) *QueryBuilder(Self) {
             // Errrk so ugly
-            if (self.query_builder.world != self) {
-                self.query_builder.world = self;
+            if (self.query_builder.context != self) {
+                self.query_builder.context = self;
             }
             return &self.query_builder;
         }
@@ -299,15 +299,15 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         }
 
         // Create a pr-egenerated entity type from a set of components.
-        // A type must be registered by the world before being used.
+        // A type must be registered by the context before being used.
         pub fn Type(comptime definition: anytype) type {
             const components_names = comptime std.meta.fields(@TypeOf(definition));
 
             return struct {
                 pub var type_archetype: ?*Archetype = null;
 
-                fn precalcArchetype(world: *Self) void {
-                    var archetype = world.archetypes.getRoot();
+                fn precalcArchetype(context: *Self) void {
+                    var archetype = context.archetypes.getRoot();
 
                     inline for (components_names) |*field| {
                         const component_id = comptime blk: {
@@ -318,7 +318,7 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                         archetype = if (archetype.edge.get(component_id)) |derived|
                             derived
                         else
-                            world.archetypes.derive(archetype, component_id);
+                            context.archetypes.derive(archetype, component_id);
                     }
 
                     type_archetype = archetype;
@@ -332,9 +332,9 @@ pub fn World(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     };
 }
 
-test "Create World type with comptime components" {
+test "Create Context type with comptime components" {
     comptime {
-        const Ecs = World(.{
+        const Ecs = Context(.{
             Component("Position", struct {
                 x: f32,
                 y: f32,
@@ -351,7 +351,7 @@ test "Create World type with comptime components" {
 }
 
 test "Create attach and detach components" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct {
             x: f32,
             y: f32,
@@ -388,7 +388,7 @@ test "Create attach and detach components" {
 }
 
 test "Create type" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct {
             x: f32,
             y: f32,
@@ -422,7 +422,7 @@ test "Create type" {
 }
 
 test "Create multiple types" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct {
             x: f32,
             y: f32,
@@ -470,7 +470,7 @@ test "Create multiple types" {
 }
 
 test "write component data" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
 
@@ -488,7 +488,7 @@ test "write component data" {
 }
 
 test "Set component prop" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
@@ -504,7 +504,7 @@ test "Set component prop" {
 }
 
 test "Set component prop with packed component" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
@@ -524,7 +524,7 @@ test "Set component prop with packed component" {
 }
 
 test "Queries are cached" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
         Component("Velocity", struct { x: f32, y: f32 }),
         Component("Health", struct { points: u32 }),
@@ -553,7 +553,7 @@ test "Queries are cached" {
 }
 
 test "Can use systems" {
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
         Component("Velocity", struct { x: f32, y: f32 }),
         Component("Health", struct { points: u32 }),
@@ -580,13 +580,13 @@ test "Can use systems" {
     }
 
     const Sys = struct {
-        fn testSystem(world: *Ecs) void {
-            var iterator = world.query().all(.{ .Position, .Velocity }).execute().iterator();
+        fn testSystem(context: *Ecs) void {
+            var iterator = context.query().all(.{ .Position, .Velocity }).execute().iterator();
 
             while (iterator.next()) |entity| {
-                var pos = world.read(entity, .Position);
-                var vel = world.read(entity, .Velocity);
-                world.write(entity, .Position, .{
+                var pos = context.read(entity, .Position);
+                var vel = context.read(entity, .Velocity);
+                context.write(entity, .Position, .{
                     .x = pos.x + vel.x,
                     .y = pos.y + vel.y,
                 });

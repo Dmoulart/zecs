@@ -4,7 +4,7 @@ const mem = @import("std").mem;
 
 pub const Component = @import("./component.zig").Component;
 pub const Archetype = @import("./archetype.zig").Archetype;
-pub const World = @import("./world.zig").World;
+pub const Context = @import("./context.zig").Context;
 pub const Entity = @import("./entity-storage.zig").Entity;
 pub const System = @import("./system.zig").System;
 pub const SparseSet = @import("./sparse-set.zig").SparseSet;
@@ -49,7 +49,7 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Position,
         Velocity,
     }, n);
@@ -57,14 +57,14 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{
+    var context = try Ecs.init(.{
         .allocator = arena.child_allocator,
     });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     const Actor = Ecs.Type(.{ .Position, .Velocity });
-    world.registerType(Actor);
+    context.registerType(Actor);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -75,7 +75,7 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     Timer.start();
 
     while (i < n) : (i += 1) {
-        _ = world.create(Actor);
+        _ = context.create(Actor);
     }
 
     Timer.end();
@@ -90,7 +90,7 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Position,
         Velocity,
     }, n);
@@ -98,9 +98,9 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -110,10 +110,10 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     Timer.start();
 
     while (i < n) : (i += 1) {
-        var ent = world.createEmpty();
+        var ent = context.createEmpty();
 
-        world.attach(ent, .Position);
-        world.attach(ent, .Velocity);
+        context.attach(ent, .Position);
+        context.attach(ent, .Velocity);
     }
 
     Timer.end();
@@ -128,7 +128,7 @@ fn removeAndAddAComponent(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Position,
         Velocity,
     }, n);
@@ -136,9 +136,9 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     var i: u32 = 0;
 
@@ -148,18 +148,18 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = world.createEmpty();
+        var ent = context.createEmpty();
 
-        world.attach(ent, .Position);
-        world.attach(ent, .Velocity);
+        context.attach(ent, .Position);
+        context.attach(ent, .Velocity);
     }
 
     i = 1;
 
     Timer.start();
     while (i < n) : (i += 1) {
-        world.detach(i, .Position);
-        world.attach(i, .Position);
+        context.detach(i, .Position);
+        context.attach(i, .Position);
     }
     Timer.end();
 }
@@ -173,7 +173,7 @@ fn deleteEntities(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Position,
         Velocity,
     }, n);
@@ -181,9 +181,9 @@ fn deleteEntities(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -192,16 +192,16 @@ fn deleteEntities(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = world.createEmpty();
+        var ent = context.createEmpty();
 
-        world.attach(ent, .Position);
-        world.attach(ent, .Velocity);
+        context.attach(ent, .Position);
+        context.attach(ent, .Velocity);
     }
 
     i = 1;
     Timer.start();
     while (i < n) : (i += 1) {
-        _ = world.deleteEntity(i);
+        _ = context.deleteEntity(i);
     }
     Timer.end();
 }
@@ -215,7 +215,7 @@ fn readTwoComponents(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Position,
         Velocity,
     }, n);
@@ -223,9 +223,9 @@ fn readTwoComponents(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -234,25 +234,25 @@ fn readTwoComponents(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = world.createEmpty();
+        var ent = context.createEmpty();
 
-        world.attach(ent, .Position);
-        world.attach(ent, .Velocity);
+        context.attach(ent, .Position);
+        context.attach(ent, .Velocity);
     }
 
     var e: Entity = 1;
 
-    var ent = world.createEmpty();
-    world.attach(ent, .Position);
-    world.attach(ent, .Velocity);
+    var ent = context.createEmpty();
+    context.attach(ent, .Position);
+    context.attach(ent, .Velocity);
 
     var result: f128 = 0;
 
     Timer.start();
     while (e < n) : (e += 1) {
-        var pos = world.read(e, .Position);
+        var pos = context.read(e, .Position);
 
-        var vel = world.read(e, .Velocity);
+        var vel = context.read(e, .Velocity);
         _ = vel;
         // If we are not doing this the compiler will remove the loop in releas fast builds
         result += pos.x;
@@ -270,7 +270,7 @@ fn readTwoComponentsProp(comptime n: u32) !void {
         y: f32,
     });
 
-    const Ecs = World(.{
+    const Ecs = Context(.{
         Pos,
         Vel,
     }, n);
@@ -278,9 +278,9 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var world = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer world.deinit();
-    defer Ecs.contextDeinit(world.allocator);
+    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer context.deinit();
+    defer Ecs.contextDeinit(context.allocator);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -289,10 +289,10 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = world.createEmpty();
+        var ent = context.createEmpty();
 
-        world.attach(ent, .Pos);
-        world.write(
+        context.attach(ent, .Pos);
+        context.write(
             ent,
             .Pos,
             .{
@@ -301,8 +301,8 @@ fn readTwoComponentsProp(comptime n: u32) !void {
             },
         );
 
-        world.attach(ent, .Vel);
-        world.write(
+        context.attach(ent, .Vel);
+        context.write(
             ent,
             .Vel,
             .{
@@ -317,9 +317,9 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.start();
 
     while (e < n) : (e += 1) {
-        var posX = world.get(e, .Pos, .x);
+        var posX = context.get(e, .Pos, .x);
         result += posX.*;
-        var vel = world.get(e, .Vel, .x);
+        var vel = context.get(e, .Vel, .x);
         _ = vel;
     }
 
@@ -335,7 +335,7 @@ fn updateWith3Systems(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const MyEcs = World(.{ Position, Velocity }, n);
+    const MyEcs = Context(.{ Position, Velocity }, n);
 
     var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
 
@@ -343,22 +343,22 @@ fn updateWith3Systems(comptime n: u32) !void {
     defer MyEcs.contextDeinit(ecs.allocator);
 
     const Sys = struct {
-        fn move(world: *MyEcs, entity: Entity) void {
-            var pos = world.pack(entity, .Position);
-            var vel = world.read(entity, .Velocity);
+        fn move(context: *MyEcs, entity: Entity) void {
+            var pos = context.pack(entity, .Position);
+            var vel = context.read(entity, .Velocity);
             pos.x.* += vel.x;
             pos.y.* += vel.y;
         }
-        fn moveSystem(world: *MyEcs) void {
-            var query = world.query().all(.{ .Position, .Velocity }).execute();
+        fn moveSystem(context: *MyEcs) void {
+            var query = context.query().all(.{ .Position, .Velocity }).execute();
             query.each(@This().move);
 
-            // var iterator = world.query().all(.{ Position, Velocity }).execute().iterator();
+            // var iterator = context.query().all(.{ Position, Velocity }).execute().iterator();
             // while (iterator.next()) |entity| {
-            //     var pos = world.read(entity, Position);
-            //     var vel = world.read(entity, Velocity);
+            //     var pos = context.read(entity, Position);
+            //     var vel = context.read(entity, Velocity);
 
-            //     world.write(entity, Position, .{
+            //     context.write(entity, Position, .{
             //         .x = pos.x + vel.x,
             //         .y = pos.y + vel.y,
             //     });
