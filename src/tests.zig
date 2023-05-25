@@ -287,7 +287,6 @@ test "Query update reactively" {
     world.attach(ent2, .Velocity);
 
     var query = world.query().all(.{.Position}).execute();
-    // defer query.deinit();
 
     try expect(query.contains(ent));
     try expect(!query.contains(ent2));
