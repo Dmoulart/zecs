@@ -57,14 +57,14 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{
-        .allocator = arena.child_allocator,
-    });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     const Actor = Ecs.Type(.{ .Position, .Velocity });
-    context.registerType(Actor);
+    ecs.registerType(Actor);
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -75,7 +75,7 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     Timer.start();
 
     while (i < n) : (i += 1) {
-        _ = context.create(Actor);
+        _ = ecs.create(Actor);
     }
 
     Timer.end();
@@ -98,9 +98,11 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -110,10 +112,10 @@ fn createEntitiesWithTwoComponents(comptime n: u32) !void {
     Timer.start();
 
     while (i < n) : (i += 1) {
-        var ent = context.createEmpty();
+        var ent = ecs.createEmpty();
 
-        context.attach(ent, .Position);
-        context.attach(ent, .Velocity);
+        ecs.attach(ent, .Position);
+        ecs.attach(ent, .Velocity);
     }
 
     Timer.end();
@@ -136,9 +138,11 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     var i: u32 = 0;
 
@@ -148,18 +152,18 @@ fn removeAndAddAComponent(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = context.createEmpty();
+        var ent = ecs.createEmpty();
 
-        context.attach(ent, .Position);
-        context.attach(ent, .Velocity);
+        ecs.attach(ent, .Position);
+        ecs.attach(ent, .Velocity);
     }
 
     i = 1;
 
     Timer.start();
     while (i < n) : (i += 1) {
-        context.detach(i, .Position);
-        context.attach(i, .Position);
+        ecs.detach(i, .Position);
+        ecs.attach(i, .Position);
     }
     Timer.end();
 }
@@ -181,9 +185,11 @@ fn deleteEntities(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -192,16 +198,16 @@ fn deleteEntities(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = context.createEmpty();
+        var ent = ecs.createEmpty();
 
-        context.attach(ent, .Position);
-        context.attach(ent, .Velocity);
+        ecs.attach(ent, .Position);
+        ecs.attach(ent, .Velocity);
     }
 
     i = 1;
     Timer.start();
     while (i < n) : (i += 1) {
-        _ = context.deleteEntity(i);
+        _ = ecs.deleteEntity(i);
     }
     Timer.end();
 }
@@ -223,9 +229,11 @@ fn readTwoComponents(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -234,25 +242,25 @@ fn readTwoComponents(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = context.createEmpty();
+        var ent = ecs.createEmpty();
 
-        context.attach(ent, .Position);
-        context.attach(ent, .Velocity);
+        ecs.attach(ent, .Position);
+        ecs.attach(ent, .Velocity);
     }
 
     var e: Entity = 1;
 
-    var ent = context.createEmpty();
-    context.attach(ent, .Position);
-    context.attach(ent, .Velocity);
+    var ent = ecs.createEmpty();
+    ecs.attach(ent, .Position);
+    ecs.attach(ent, .Velocity);
 
     var result: f128 = 0;
 
     Timer.start();
     while (e < n) : (e += 1) {
-        var pos = context.read(e, .Position);
+        var pos = ecs.read(e, .Position);
 
-        var vel = context.read(e, .Velocity);
+        var vel = ecs.read(e, .Velocity);
         _ = vel;
         // If we are not doing this the compiler will remove the loop in releas fast builds
         result += pos.x;
@@ -278,9 +286,11 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var context = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer context.deinit();
-    defer Ecs.contextDeinit(context.allocator);
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
 
     var i: u32 = 0;
     std.debug.print("\n-------------------------------", .{});
@@ -289,10 +299,10 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     std.debug.print("\n", .{});
 
     while (i < n) : (i += 1) {
-        var ent = context.createEmpty();
+        var ent = ecs.createEmpty();
 
-        context.attach(ent, .Pos);
-        context.write(
+        ecs.attach(ent, .Pos);
+        ecs.write(
             ent,
             .Pos,
             .{
@@ -301,8 +311,8 @@ fn readTwoComponentsProp(comptime n: u32) !void {
             },
         );
 
-        context.attach(ent, .Vel);
-        context.write(
+        ecs.attach(ent, .Vel);
+        ecs.write(
             ent,
             .Vel,
             .{
@@ -317,9 +327,9 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.start();
 
     while (e < n) : (e += 1) {
-        var posX = context.get(e, .Pos, .x);
+        var posX = ecs.get(e, .Pos, .x);
         result += posX.*;
-        var vel = context.get(e, .Vel, .x);
+        var vel = ecs.get(e, .Vel, .x);
         _ = vel;
     }
 
@@ -335,30 +345,34 @@ fn updateWith3Systems(comptime n: u32) !void {
         x: f32,
         y: f32,
     });
-    const MyEcs = Context(.{ Position, Velocity }, n);
+    const Ecs = Context(.{ Position, Velocity }, n);
 
-    var ecs = try MyEcs.init(.{ .allocator = std.heap.page_allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
 
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer MyEcs.contextDeinit(ecs.allocator);
 
     const Sys = struct {
-        fn move(context: *MyEcs, entity: Entity) void {
-            var pos = context.pack(entity, .Position);
-            var vel = context.read(entity, .Velocity);
+        fn move(ctx: *Ecs, entity: Entity) void {
+            var pos = ctx.pack(entity, .Position);
+            var vel = ctx.read(entity, .Velocity);
             pos.x.* += vel.x;
             pos.y.* += vel.y;
         }
-        fn moveSystem(context: *MyEcs) void {
-            var query = context.query().all(.{ .Position, .Velocity }).execute();
+        fn moveSystem(ctx: *Ecs) void {
+            var query = ctx.query().all(.{ .Position, .Velocity }).execute();
             query.each(@This().move);
 
-            // var iterator = context.query().all(.{ Position, Velocity }).execute().iterator();
+            // var iterator = ecs.query().all(.{ Position, Velocity }).execute().iterator();
             // while (iterator.next()) |entity| {
-            //     var pos = context.read(entity, Position);
-            //     var vel = context.read(entity, Velocity);
+            //     var pos = ecs.read(entity, Position);
+            //     var vel = ecs.read(entity, Velocity);
 
-            //     context.write(entity, Position, .{
+            //     ecs.write(entity, Position, .{
             //         .x = pos.x + vel.x,
             //         .y = pos.y + vel.y,
             //     });
@@ -366,7 +380,7 @@ fn updateWith3Systems(comptime n: u32) !void {
         }
     };
 
-    const Actor = MyEcs.Type(.{ .Position, .Velocity });
+    const Actor = Ecs.Type(.{ .Position, .Velocity });
     ecs.registerType(Actor);
 
     var i: u32 = 0;

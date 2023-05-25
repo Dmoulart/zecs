@@ -21,6 +21,11 @@ const System = @import("./system.zig").System;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
+const ContextError = error{
+    NotReady,
+    AlreadyReady,
+};
+
 pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     const ContextComponents = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
@@ -59,6 +64,8 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
     return struct {
         const Self = @This();
 
+        pub var context_allocator: std.mem.Allocator = undefined;
+
         // Comptime immutable components definitions
         pub const components_definitions: ContextComponents = ContextComponents{};
 
@@ -85,7 +92,47 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
+        pub fn setup(allocator: std.mem.Allocator) !void {
+            // Init context component
+            if (components_are_ready) {
+                return ContextError.AlreadyReady;
+            }
+
+            context_allocator = allocator;
+
+            components = ContextComponents{};
+
+            // Ensure components capacity
+            const components_fields = std.meta.fields(ContextComponents);
+
+            inline for (components_fields) |component_field| {
+                var component = &@field(components, component_field.name);
+
+                component.storage = ComponentStorage(@TypeOf(component.*)){};
+
+                try component.storage.setup(context_allocator, capacity);
+            }
+
+            components_are_ready = true;
+        }
+
+        pub fn unsetup() void {
+            const context_components = std.meta.fields(@TypeOf(components));
+
+            inline for (context_components) |*component_field| {
+                var component = @field(components, component_field.name);
+
+                component.deinit(context_allocator);
+            }
+
+            components_are_ready = false;
+        }
+
         pub fn init(options: ContextOptions) !Self {
+            if (!components_are_ready) {
+                return ContextError.NotReady;
+            }
+
             var archetypes_storage_capacity = options.archetypes_capacity;
 
             var archetypes = try ArchetypeStorage.init(.{
@@ -109,33 +156,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 .systems = std.ArrayList(System(*Self)).init(options.allocator),
             };
 
-            // Init context component
-            if (!components_are_ready) {
-                components = ContextComponents{};
-
-                // Ensure components capacity
-                const context_components = &std.meta.fields(ContextComponents);
-                inline for (context_components.*) |*component_field| {
-                    var component = &@field(components, component_field.name);
-
-                    component.storage = ComponentStorage(@TypeOf(@field(components, component_field.name))){};
-                    component.storage.setup(context.allocator, capacity) catch unreachable;
-
-                    components_are_ready = true;
-                }
-            }
-
             return context;
-        }
-
-        // Relation between components and context instance is not clear at all. Ultra footgun
-        pub fn contextDeinit(allocator: std.mem.Allocator) void {
-            const context_components = &std.meta.fields(@TypeOf(components));
-            inline for (context_components.*) |*component_field| {
-                var component_instance = @field(components, component_field.name);
-                component_instance.deinit(allocator);
-            }
-            components_are_ready = false;
         }
 
         pub fn deinit(self: *Self) void {
@@ -365,9 +386,14 @@ test "Create attach and detach components" {
         }),
     }, 10);
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     var ent = ecs.createEmpty();
 
@@ -407,9 +433,14 @@ test "Create type" {
         .Velocity,
     });
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     ecs.registerType(Actor);
 
@@ -447,9 +478,14 @@ test "Create multiple types" {
         .Rotation,
     });
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     ecs.registerType(Actor);
     ecs.registerType(Body);
@@ -474,9 +510,14 @@ test "write component data" {
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, .Position);
@@ -491,9 +532,15 @@ test "Set component prop" {
     const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, .Position);
@@ -507,9 +554,15 @@ test "Set component prop with packed component" {
     const Ecs = Context(.{
         Component("Position", struct { x: f32, y: f32 }),
     }, 10);
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     const entity = ecs.createEmpty();
     ecs.attach(entity, .Position);
@@ -529,9 +582,15 @@ test "Queries are cached" {
         Component("Velocity", struct { x: f32, y: f32 }),
         Component("Health", struct { points: u32 }),
     }, 10);
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     var query_a_1 = ecs.query().any(.{.Position}).execute();
     var query_a_2 = ecs.query().any(.{.Position}).execute();
@@ -559,9 +618,14 @@ test "Can use systems" {
         Component("Health", struct { points: u32 }),
     }, 10);
 
-    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
     defer ecs.deinit();
-    defer Ecs.contextDeinit(ecs.allocator);
 
     var i: u32 = 0;
     while (i < 9) : (i += 1) {
