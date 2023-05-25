@@ -5,7 +5,7 @@ const Context = @import("./context.zig").Context;
 const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
 const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
-const String = @import("./string.zig").String;
+const String = @import("./lib/string/string.zig").String;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 

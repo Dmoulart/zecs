@@ -24,7 +24,6 @@ pub fn SparseSet(comptime T: type) type {
 
         pub fn init(options: SparseSetOptions) Self {
             var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY);
-            // var capacity = (options.capacity orelse DEFAULT_SPARSE_SET_CAPACITY) + 1;
             // holy molly err handling
             var indices = options.allocator.alloc(T, capacity) catch unreachable;
             errdefer options.allocator.free(indices);
