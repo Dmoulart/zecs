@@ -470,9 +470,10 @@ test "Create multiple types" {
 }
 
 test "write component data" {
-    const Position = Component("Position", struct { x: f32, y: f32 });
+    const Ecs = World(.{
+        Component("Position", struct { x: f32, y: f32 }),
+    }, 10);
 
-    const Ecs = World(.{Position}, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
@@ -487,9 +488,9 @@ test "write component data" {
 }
 
 test "Set component prop" {
-    const Position = Component("Position", struct { x: f32, y: f32 });
-
-    const Ecs = World(.{Position}, 10);
+    const Ecs = World(.{
+        Component("Position", struct { x: f32, y: f32 }),
+    }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
@@ -503,9 +504,9 @@ test "Set component prop" {
 }
 
 test "Set component prop with packed component" {
-    const Position = Component("Position", struct { x: f32, y: f32 });
-
-    const Ecs = World(.{Position}, 10);
+    const Ecs = World(.{
+        Component("Position", struct { x: f32, y: f32 }),
+    }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
@@ -523,11 +524,11 @@ test "Set component prop with packed component" {
 }
 
 test "Queries are cached" {
-    const Position = Component("Position", struct { x: f32, y: f32 });
-    const Velocity = Component("Velocity", struct { x: f32, y: f32 });
-    const Health = Component("Health", struct { points: u32 });
-
-    const Ecs = World(.{ Position, Velocity, Health }, 10);
+    const Ecs = World(.{
+        Component("Position", struct { x: f32, y: f32 }),
+        Component("Velocity", struct { x: f32, y: f32 }),
+        Component("Health", struct { points: u32 }),
+    }, 10);
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
     defer Ecs.contextDeinit(ecs.allocator);
@@ -552,39 +553,40 @@ test "Queries are cached" {
 }
 
 test "Can use systems" {
-    const SysPosition = Component("SysPosition", struct { x: f32, y: f32 });
-    const SysVelocity = Component("SysVelocity", struct { x: f32, y: f32 });
-    const SysHealth = Component("SysHealth", struct { points: u32 });
-    const SystemEcs = World(.{ SysPosition, SysVelocity, SysHealth }, 10);
+    const Ecs = World(.{
+        Component("Position", struct { x: f32, y: f32 }),
+        Component("Velocity", struct { x: f32, y: f32 }),
+        Component("Health", struct { points: u32 }),
+    }, 10);
 
-    var ecs = try SystemEcs.init(.{ .allocator = std.testing.allocator });
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
-    defer SystemEcs.contextDeinit(ecs.allocator);
+    defer Ecs.contextDeinit(ecs.allocator);
 
     var i: u32 = 0;
     while (i < 9) : (i += 1) {
         var entity = ecs.createEmpty();
-        ecs.attach(entity, .SysPosition);
-        ecs.attach(entity, .SysVelocity);
+        ecs.attach(entity, .Position);
+        ecs.attach(entity, .Velocity);
 
-        ecs.write(entity, .SysPosition, .{
+        ecs.write(entity, .Position, .{
             .x = 0,
             .y = 0,
         });
-        ecs.write(entity, .SysVelocity, .{
+        ecs.write(entity, .Velocity, .{
             .x = 2,
             .y = 2,
         });
     }
 
     const Sys = struct {
-        fn testSystem(world: *SystemEcs) void {
-            var iterator = world.query().all(.{ .SysPosition, .SysVelocity }).execute().iterator();
+        fn testSystem(world: *Ecs) void {
+            var iterator = world.query().all(.{ .Position, .Velocity }).execute().iterator();
 
             while (iterator.next()) |entity| {
-                var pos = world.read(entity, .SysPosition);
-                var vel = world.read(entity, .SysVelocity);
-                world.write(entity, .SysPosition, .{
+                var pos = world.read(entity, .Position);
+                var vel = world.read(entity, .Velocity);
+                world.write(entity, .Position, .{
                     .x = pos.x + vel.x,
                     .y = pos.y + vel.y,
                 });
@@ -596,11 +598,11 @@ test "Can use systems" {
 
     ecs.step();
 
-    var pos_1 = ecs.read(1, .SysPosition);
+    var pos_1 = ecs.read(1, .Position);
     try expect(pos_1.x == 2);
     try expect(pos_1.y == 2);
 
-    var pos_8 = ecs.read(8, .SysPosition);
+    var pos_8 = ecs.read(8, .Position);
     try expect(pos_8.x == 2);
     try expect(pos_8.y == 2);
 }
