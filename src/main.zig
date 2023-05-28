@@ -40,19 +40,67 @@ fn run(comptime function: anytype) void {
     function(2_000_000) catch unreachable;
 }
 
+fn createEntitiesWithTwoComponents(comptime n: u32) !void {
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
+
+    var i: u32 = 0;
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\nCreate {} entities with 2 comps", .{n});
+    std.debug.print("\n-------------------------------", .{});
+    std.debug.print("\n", .{});
+    Timer.start();
+
+    while (i < n) : (i += 1) {
+        var ent = ecs.createEmpty();
+
+        ecs.attach(ent, .Position);
+        ecs.attach(ent, .Velocity);
+    }
+
+    Timer.end();
+}
+
 fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{
-        Position,
-        Velocity,
-    }, n);
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -81,59 +129,23 @@ fn createEntitiesWithTwoComponentsPrefab(comptime n: u32) !void {
     Timer.end();
 }
 
-fn createEntitiesWithTwoComponents(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{
-        Position,
-        Velocity,
-    }, n);
-
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-
-    try Ecs.setup(arena.child_allocator);
-    defer Ecs.unsetup();
-
-    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
-    defer ecs.deinit();
-
-    var i: u32 = 0;
-    std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\nCreate {} entities with 2 comps", .{n});
-    std.debug.print("\n-------------------------------", .{});
-    std.debug.print("\n", .{});
-    Timer.start();
-
-    while (i < n) : (i += 1) {
-        var ent = ecs.createEmpty();
-
-        ecs.attach(ent, .Position);
-        ecs.attach(ent, .Velocity);
-    }
-
-    Timer.end();
-}
-
 fn removeAndAddAComponent(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{
-        Position,
-        Velocity,
-    }, n);
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -169,18 +181,22 @@ fn removeAndAddAComponent(comptime n: u32) !void {
 }
 
 fn deleteEntities(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{
-        Position,
-        Velocity,
-    }, n);
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -213,18 +229,22 @@ fn deleteEntities(comptime n: u32) !void {
 }
 
 fn readTwoComponents(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{
-        Position,
-        Velocity,
-    }, n);
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -269,20 +289,22 @@ fn readTwoComponents(comptime n: u32) !void {
 }
 
 fn readTwoComponentsProp(comptime n: u32) !void {
-    const Pos = Component("Pos", struct {
-        x: f32,
-        y: f32,
-    });
-    const Vel = Component("Vel", struct {
-        x: f32,
-        y: f32,
-    });
-
-    const Ecs = Context(.{
-        Pos,
-        Vel,
-    }, n);
-
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
@@ -301,20 +323,20 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     while (i < n) : (i += 1) {
         var ent = ecs.createEmpty();
 
-        ecs.attach(ent, .Pos);
+        ecs.attach(ent, .Position);
         ecs.write(
             ent,
-            .Pos,
+            .Position,
             .{
                 .x = @intToFloat(f32, i),
                 .y = @intToFloat(f32, i + 1),
             },
         );
 
-        ecs.attach(ent, .Vel);
+        ecs.attach(ent, .Velocity);
         ecs.write(
             ent,
-            .Vel,
+            .Velocity,
             .{
                 .x = @intToFloat(f32, i),
                 .y = @intToFloat(f32, i + 1),
@@ -327,9 +349,9 @@ fn readTwoComponentsProp(comptime n: u32) !void {
     Timer.start();
 
     while (e < n) : (e += 1) {
-        var posX = ecs.get(e, .Pos, .x);
+        var posX = ecs.get(e, .Position, .x);
         result += posX.*;
-        var vel = ecs.get(e, .Vel, .x);
+        var vel = ecs.get(e, .Velocity, .x);
         _ = vel;
     }
 
@@ -337,15 +359,22 @@ fn readTwoComponentsProp(comptime n: u32) !void {
 }
 
 fn updateWith1System(comptime n: u32) !void {
-    const Position = Component("Position", struct {
-        x: f32,
-        y: f32,
-    });
-    const Velocity = Component("Velocity", struct {
-        x: f32,
-        y: f32,
-    });
-    const Ecs = Context(.{ Position, Velocity }, n);
+    const Ecs = Context(
+        .{
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = n,
+        },
+    );
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();

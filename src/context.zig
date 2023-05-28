@@ -26,15 +26,15 @@ const ContextError = error{
     AlreadyReady,
 };
 
-pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
+pub fn Context(comptime config: anytype) type {
     const ContextComponents = comptime blk: {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
-        const ComponentsTypesFields = std.meta.fields(@TypeOf(ComponentsTypes));
+        const ComponentsTypesFields = std.meta.fields(@TypeOf(config.components));
 
         var component_counter: u32 = 0;
 
         inline for (ComponentsTypesFields) |field| {
-            var ComponentType = @field(ComponentsTypes, field.name);
+            var ComponentType = @field(config.components, field.name);
 
             component_counter += 1;
             var component_instance = ComponentType{
@@ -75,6 +75,12 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         // States the runtime components have been initialized
         pub var components_are_ready = false;
 
+        // The context resources type
+        pub const Resources = config.Resources;
+
+        // The component storage capacity
+        const capacity: u32 = config.capacity;
+
         var entity_counter: Entity = 0;
 
         allocator: std.mem.Allocator,
@@ -86,6 +92,8 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
         systems: std.ArrayList(System(*Self)),
 
         query_builder: QueryBuilder(Self),
+
+        resources: Resources,
 
         root: *Archetype,
 
@@ -156,6 +164,7 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
                 ),
                 .root = archetypes.getRoot(),
                 .systems = std.ArrayList(System(*Self)).init(options.allocator),
+                .resources = Resources{},
             };
 
             return context;
@@ -314,6 +323,18 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
 
         pub fn getComponent(comptime component_name: ComponentName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
             return comptime @field(components, @tagName(component_name));
+        }
+
+        pub fn Resource(comptime field: meta.FieldEnum(Resources)) type {
+            return comptime meta.fieldInfo(Resources, field).field_type;
+        }
+
+        pub fn getResource(self: *Self, comptime field: meta.FieldEnum(Resources)) Resource(field) {
+            return comptime @field(self.resources, @tagName(field));
+        }
+
+        pub fn setResource(self: *Self, comptime field: meta.FieldEnum(Resources), value: Resource(field)) void {
+            comptime @field(self.resources, @tagName(field)) = value;
         }
 
         pub fn registerType(self: *Self, comptime entity_type: anytype) void {
