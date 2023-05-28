@@ -330,6 +330,12 @@ pub fn Context(comptime ComponentsTypes: anytype, comptime capacity: u32) type {
             } else {
                 var new_archetype = self.archetypes.derive(archetype, component.id);
 
+                // match against queries
+                var queries = self.query_builder.queries.iterator();
+                while (queries.next()) |*existant_query| {
+                    existant_query.value_ptr.maybeRegisterArchetype(new_archetype);
+                }
+
                 self.swapArchetypes(entity, archetype, new_archetype);
             }
         }
@@ -658,6 +664,44 @@ test "Can generate archetype" {
 
     try expect(mask.has(Ecs.components.Position.id));
     try expect(!mask.has(Ecs.components.Velocity.id));
+}
+
+test "Can automatically add new archetypes to existing queries" {
+    const Ecs = Context(.{
+        Component("Position", struct {
+            x: f32,
+            y: f32,
+        }),
+        Component("Velocity", struct {
+            x: f32,
+            y: f32,
+        }),
+    }, 10);
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
+
+    var ent = ecs.createEmpty();
+    var ent2 = ecs.createEmpty();
+
+    ecs.attach(ent, .Position);
+
+    ecs.attach(ent2, .Velocity);
+
+    var query = ecs.query().any(.{ .Position, .Velocity }).execute();
+
+    var ent3 = ecs.createEmpty();
+
+    ecs.attach(ent3, .Position);
+    ecs.attach(ent3, .Velocity);
+
+    try expect(query.contains(ent3));
 }
 
 test "Can query multiple components" {

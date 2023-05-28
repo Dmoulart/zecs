@@ -59,17 +59,15 @@ pub fn Query(comptime ContextType: anytype) type {
             }
         }
 
-        fn execute(self: *Self, context: anytype) void {
-            archetypes_loop: for (context.archetypes.all.items) |*archetype| {
-                for (self.matchers.items) |*matcher| {
-                    const mask = &matcher.mask;
+        pub fn maybeRegisterArchetype(self: *Self, archetype: *Archetype) void {
+            for (self.matchers.items) |*matcher| {
+                const mask = &matcher.mask;
 
-                    if (!matcher.match(mask, &archetype.mask))
-                        continue :archetypes_loop;
-                }
-
-                _ = self.archetypes.append(archetype) catch null;
+                if (!matcher.match(mask, &archetype.mask))
+                    return;
             }
+
+            _ = self.archetypes.append(archetype) catch null;
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
@@ -77,6 +75,12 @@ pub fn Query(comptime ContextType: anytype) type {
                 if (arch.entities.has(entity)) return true;
             }
             return false;
+        }
+
+        fn execute(self: *Self, context: anytype) void {
+            for (context.archetypes.all.items) |*archetype| {
+                self.maybeRegisterArchetype(archetype);
+            }
         }
     };
 }
