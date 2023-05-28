@@ -241,7 +241,7 @@ pub const QueryIterator = struct {
 
     current_entity_index: usize = 0,
 
-    // Iterator slower than each. Maybe do something about it ? or delete iterator ?
+    // Slow iterator is slow. Maybe do something about it ? or delete it ?
     pub fn next(self: *Self) ?Entity {
         if (self.current_archetype_index < self.archetypes.items.len) {
             var archetype_entities = self.archetypes.items[self.current_archetype_index].entities;
