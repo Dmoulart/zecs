@@ -17,6 +17,10 @@ const ARCHETYPE_BITSET_CAPACITY: u32 = 50;
 pub const Archetype = struct {
     const Self = @This();
 
+    var counter: u32 = 0;
+
+    id: u32,
+
     mask: ArchetypeMask,
 
     entities: SparseSet(Entity),
@@ -33,8 +37,9 @@ pub const Archetype = struct {
 
     pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) Archetype {
         var mask = generateComponentsMask(comps, allocator);
-
+        counter += 1;
         return Archetype{
+            .id = counter,
             .mask = mask,
             .entities = SparseSet(Entity).init(.{
                 .allocator = allocator,
@@ -50,6 +55,7 @@ pub const Archetype = struct {
 
     pub fn derive(self: *Self, id: ComponentId, allocator: std.mem.Allocator, capacity: u32) Archetype {
         var mask: ArchetypeMask = self.mask.clone();
+        counter += 1;
 
         // @todo make a toggle method
         if (mask.has(id)) {
@@ -57,8 +63,8 @@ pub const Archetype = struct {
         } else {
             mask.set(id);
         }
-
         return Archetype{
+            .id = counter,
             .mask = mask,
             .entities = SparseSet(Entity).init(.{
                 .allocator = allocator,

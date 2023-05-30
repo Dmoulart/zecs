@@ -17,6 +17,7 @@ const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const System = @import("./system.zig").System;
+const OnEnterQuery = @import("./system.zig").OnEnterQuery;
 
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
@@ -91,6 +92,8 @@ pub fn Context(comptime config: anytype) type {
 
         systems: std.ArrayList(System(*Self)),
 
+        // on_add: SparseArray(usize, OnEnterQuery(*Self)),
+
         query_builder: QueryBuilder(Self),
 
         resources: Resources,
@@ -164,6 +167,10 @@ pub fn Context(comptime config: anytype) type {
                 ),
                 .root = archetypes.getRoot(),
                 .systems = std.ArrayList(System(*Self)).init(options.allocator),
+                // .on_add = SparseArray(usize, OnEnterQuery(*Self)).init(.{
+                //     .allocator = options.allocator,
+                //     .capacity = archetypes.capacity,
+                // }),
                 .resources = Resources{},
             };
 
@@ -311,6 +318,10 @@ pub fn Context(comptime config: anytype) type {
             self.systems.append(system) catch unreachable;
         }
 
+        // pub fn addSystem(self: *Self, system: System(*Self)) void {
+        //     self.systems.append(system) catch unreachable;
+        // }
+
         pub fn step(self: *Self) void {
             for (self.systems.items) |system| {
                 system(self);
@@ -410,15 +421,19 @@ pub fn Context(comptime config: anytype) type {
 test "Create Context type with comptime components" {
     comptime {
         const Ecs = Context(.{
-            Component("Position", struct {
-                x: f32,
-                y: f32,
-            }),
-            Component("Velocity", struct {
-                x: f32,
-                y: f32,
-            }),
-        }, 10);
+            .components = .{
+                Component("Position", struct {
+                    x: f32,
+                    y: f32,
+                }),
+                Component("Velocity", struct {
+                    x: f32,
+                    y: f32,
+                }),
+            },
+            .Resources = struct {},
+            .capacity = 10,
+        });
 
         try expect(Ecs.components_definitions.Position.id == 1);
         try expect(Ecs.components_definitions.Velocity.id == 2);
@@ -427,15 +442,19 @@ test "Create Context type with comptime components" {
 
 test "Can create Entity" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 1);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 1,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -453,15 +472,19 @@ test "Can create Entity" {
 
 test "Can remove Entity" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 1);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 1,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -480,15 +503,19 @@ test "Can remove Entity" {
 
 test "Can resize" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 4);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 4,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -513,15 +540,19 @@ test "Can resize" {
 
 test "Can create multiple worlds" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 4);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 4,
+    });
 
     var arena_1: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     var arena_2: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -560,15 +591,19 @@ test "Can create multiple worlds" {
 
 test "Can recycle Entity" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -591,15 +626,19 @@ test "Can recycle Entity" {
 
 test "Can attach component" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -623,15 +662,19 @@ test "Can attach component" {
 
 test "Can detach component" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -659,15 +702,19 @@ test "Can detach component" {
 
 test "Can generate archetype" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -689,15 +736,19 @@ test "Can generate archetype" {
 
 test "Can automatically add new archetypes to existing queries" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -727,15 +778,19 @@ test "Can automatically add new archetypes to existing queries" {
 
 test "Can query multiple components" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -773,15 +828,19 @@ test "Can query multiple components" {
 
 test "Can iterate over query using iterator " {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -814,15 +873,20 @@ test "Can iterate over query using iterator " {
 
 test "Can use the all query operator" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
+
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -854,15 +918,19 @@ test "Can use the all query operator" {
 
 test "Can use the any query operator" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -891,19 +959,22 @@ test "Can use the any query operator" {
 
 test "Can use the not operator" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component(
-            "Health",
-            struct { points: u32 },
-        ),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Health", struct {
+                points: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -933,21 +1004,22 @@ test "Can use the not operator" {
 
 test "Can use the none operator" {
     const Ecs = Context(.{
-        Component("Comp1", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Comp2", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component(
-            "Comp3",
-            struct {
-                points: u32,
-            },
-        ),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Health", struct {
+                points: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -959,40 +1031,38 @@ test "Can use the none operator" {
     defer ecs.deinit();
 
     var ent = ecs.createEmpty();
-    ecs.attach(ent, .Comp1);
-    ecs.attach(ent, .Comp2);
+    ecs.attach(ent, .Position);
+    ecs.attach(ent, .Velocity);
 
     var ent2 = ecs.createEmpty();
-    ecs.attach(ent2, .Comp3);
+    ecs.attach(ent2, .Health);
 
-    var query = ecs.query().none(.{ .Comp1, .Comp2 }).execute();
+    var query = ecs.query().none(.{ .Position, .Velocity }).execute();
 
     try expect(!query.contains(ent));
 }
 
 test "Can combine query operators" {
     const Ecs = Context(.{
-        Component("Comp1", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Comp2", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component(
-            "Comp3",
-            struct {
-                points: u32,
-            },
-        ),
-        Component(
-            "Comp4",
-            struct {
-                points: u32,
-            },
-        ),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Health", struct {
+                points: f32,
+            }),
+            Component("Intelligence", struct {
+                points: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1004,25 +1074,25 @@ test "Can combine query operators" {
     defer ecs.deinit();
 
     var ent = ecs.createEmpty();
-    ecs.attach(ent, .Comp1);
+    ecs.attach(ent, .Position);
 
     var ent2 = ecs.createEmpty();
-    ecs.attach(ent2, .Comp1);
-    ecs.attach(ent2, .Comp2);
-    ecs.attach(ent2, .Comp3);
+    ecs.attach(ent2, .Position);
+    ecs.attach(ent2, .Velocity);
+    ecs.attach(ent2, .Health);
 
     var ent3 = ecs.createEmpty();
-    ecs.attach(ent3, .Comp3);
-    ecs.attach(ent3, .Comp4);
+    ecs.attach(ent3, .Health);
+    ecs.attach(ent3, .Intelligence);
 
     var ent4 = ecs.createEmpty();
-    ecs.attach(ent4, .Comp1);
-    ecs.attach(ent4, .Comp4);
+    ecs.attach(ent4, .Position);
+    ecs.attach(ent4, .Intelligence);
 
     var query = ecs.query()
-        .not(.{.Comp2})
-        .any(.{ .Comp3, .Comp4, .Comp1 })
-        .none(.{ .Comp1, .Comp4 })
+        .not(.{.Velocity})
+        .any(.{ .Health, .Intelligence, .Position })
+        .none(.{ .Position, .Intelligence })
         .execute();
 
     try expect(query.contains(ent));
@@ -1033,18 +1103,22 @@ test "Can combine query operators" {
 
 test "Can create type" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Rotation", struct {
-            degrees: i8,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Rotation", struct {
+                degrees: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     const Actor = Ecs.Type(.{
         .Position,
@@ -1072,18 +1146,22 @@ test "Can create type" {
 
 test "Can create multiple types" {
     const Ecs = Context(.{
-        Component("Position", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Velocity", struct {
-            x: f32,
-            y: f32,
-        }),
-        Component("Rotation", struct {
-            degrees: i8,
-        }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Rotation", struct {
+                degrees: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     const Actor = Ecs.Type(.{
         .Position,
@@ -1125,8 +1203,15 @@ test "Can create multiple types" {
 
 test "Can write component data" {
     const Ecs = Context(.{
-        Component("Position", struct { x: f32, y: f32 }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1148,8 +1233,15 @@ test "Can write component data" {
 
 test "Can set component prop" {
     const Ecs = Context(.{
-        Component("Position", struct { x: f32, y: f32 }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1170,8 +1262,15 @@ test "Can set component prop" {
 
 test "Can set component prop with packed component" {
     const Ecs = Context(.{
-        Component("Position", struct { x: f32, y: f32 }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1196,10 +1295,22 @@ test "Can set component prop with packed component" {
 
 test "Can cache queries" {
     const Ecs = Context(.{
-        Component("Position", struct { x: f32, y: f32 }),
-        Component("Velocity", struct { x: f32, y: f32 }),
-        Component("Health", struct { points: u32 }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Health", struct {
+                points: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1231,10 +1342,22 @@ test "Can cache queries" {
 
 test "Can run systems" {
     const Ecs = Context(.{
-        Component("Position", struct { x: f32, y: f32 }),
-        Component("Velocity", struct { x: f32, y: f32 }),
-        Component("Health", struct { points: u32 }),
-    }, 10);
+        .components = .{
+            Component("Position", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Velocity", struct {
+                x: f32,
+                y: f32,
+            }),
+            Component("Health", struct {
+                points: f32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();

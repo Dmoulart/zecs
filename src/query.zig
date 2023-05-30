@@ -6,6 +6,7 @@ const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
 const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 const String = @import("./lib/string/string.zig").String;
+const OnEnterQuery = @import("./system.zig").OnEnterQuery;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
@@ -30,12 +31,15 @@ pub fn Query(comptime ContextType: anytype) type {
 
         context: *ContextType,
 
+        on_enter: ?OnEnterQuery(ContextType),
+
         pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
             return Self{
                 .allocator = allocator,
                 .matchers = matchers,
                 .archetypes = std.ArrayList(*Archetype).init(allocator),
                 .context = undefined,
+                .on_enter = null,
             };
         }
 
@@ -68,6 +72,12 @@ pub fn Query(comptime ContextType: anytype) type {
             }
 
             _ = self.archetypes.append(archetype) catch null;
+
+            if (self.on_enter) |on_enter| {
+                for (archetype.entities.values) |entity| {
+                    on_enter(self.context, entity);
+                }
+            }
         }
 
         pub fn contains(self: *Self, entity: Entity) bool {
@@ -75,6 +85,10 @@ pub fn Query(comptime ContextType: anytype) type {
                 if (arch.entities.has(entity)) return true;
             }
             return false;
+        }
+
+        pub fn onEnter(self: *Self, function: OnEnterQuery(*ContextType)) void {
+            self.on_enter = function;
         }
 
         fn execute(self: *Self, context: anytype) void {
