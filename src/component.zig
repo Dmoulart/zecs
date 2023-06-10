@@ -67,7 +67,6 @@ pub fn ComponentStorage(comptime component: anytype) type {
         var Field = std.meta.FieldEnum(component.Schema);
 
         inline for (ComponentsSchemaFields) |field, i| {
-            // const componentsSchemaField = @field(component.Schema, field.name);
             const FieldType = std.meta.fieldInfo(component.Schema, @intToEnum(Field, i)).field_type;
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = field.name[0..],
@@ -160,8 +159,10 @@ pub fn ComponentStorage(comptime component: anytype) type {
             return &@field(self.cached_items, prop)[entity];
         }
 
-        pub fn write(self: *Self, entity: Entity, data: Schema) void {
-            inline for (fields) |field_info| {
+        pub fn write(self: *Self, entity: Entity, data: anytype) void {
+            const data_fields = comptime @typeInfo(@TypeOf(data)).Struct.fields;
+
+            inline for (data_fields) |field_info| {
                 @field(self.cached_items, field_info.name)[entity] = @field(data, field_info.name);
             }
         }
