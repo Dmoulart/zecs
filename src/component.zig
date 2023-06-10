@@ -159,6 +159,8 @@ pub fn ComponentStorage(comptime component: anytype) type {
             return &@field(self.cached_items, prop)[entity];
         }
 
+        // Mutates a component by passing a struct containing the new component values.
+        // The passed data can partially match the component schema type or match it fully.
         pub fn write(self: *Self, entity: Entity, data: anytype) void {
             const data_fields = comptime @typeInfo(@TypeOf(data)).Struct.fields;
 
