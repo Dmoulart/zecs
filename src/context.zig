@@ -67,7 +67,7 @@ pub fn Context(comptime config: anytype) type {
         pub var context_allocator: std.mem.Allocator = undefined;
 
         // Comptime immutable components definitions
-        // @todo: create a whole other objects ?
+        // @todo: create a whole other objects ? components identifiers ?
         pub const components_definitions: ContextComponents = ContextComponents{};
 
         // Runtime mutable components
@@ -90,7 +90,7 @@ pub fn Context(comptime config: anytype) type {
 
         entities: EntityStorage,
 
-        systems: std.ArrayList(System(*Self)),
+        systems: std.ArrayList(System(Self)),
 
         // on_add: SparseArray(usize, OnEnterQuery(*Self)),
 
@@ -166,7 +166,7 @@ pub fn Context(comptime config: anytype) type {
                     options.allocator,
                 ),
                 .root = archetypes.getRoot(),
-                .systems = std.ArrayList(System(*Self)).init(options.allocator),
+                .systems = std.ArrayList(System(Self)).init(options.allocator),
                 // .on_add = SparseArray(usize, OnEnterQuery(*Self)).init(.{
                 //     .allocator = options.allocator,
                 //     .capacity = archetypes.capacity,
@@ -306,6 +306,50 @@ pub fn Context(comptime config: anytype) type {
             storage.set(entity, prop, data);
         }
 
+        // pub fn assign(
+        //     self: *Self,
+        //     entity: Entity,
+        //     data: anytype,
+        // ) void {
+        //     assert(self.contains(entity));
+
+        //     const data_fields = comptime meta.fields(@TypeOf(data));
+
+        //     inline for (data_fields) |data_field| {
+        //         const component_name = comptime data_field.name;
+
+        //         var component_data = comptime @field(data, component_name);
+
+        //         var name = comptime meta.stringToEnum(ComponentName, component_name).?;
+
+        //         var storage = comptime getComponent(name).storage;
+        //         self.attach(entity, name);
+        //         storage.write(component_data);
+
+        //         // const component_fields = comptime meta.fields(@TypeOf(component_data));
+        //         // _ = component_data;
+        //         // inline for (component_fields) |component_field| {
+        //         //     const component_prop_name = comptime component_field.name;
+        //         //     var component_prop_value = @field(component_fields, component_prop_name);
+        //         //     var component_data = @field(data_fields, field.name);
+        //         //     _ = component_data;
+        //         // }
+        //     }
+        //     // const DataEnum = comptime meta.FieldEnum(@TypeOf(data));
+
+        //     // inline for (comptime meta.fieldNames(DataEnum)) |field_name, i| {
+        //     //     _ = field_name;
+        //     //     // const component_name = comptime field.name;
+        //     //     const name = comptime @intToEnum(DataEnum, i);
+        //     //     var component_data = @field(data, @tagName(name));
+
+        //     //     var storage = getComponentByString(@tagName(name)).storage;
+        //     //     self.attach(entity, name);
+        //     //     storage.write(component_data);
+        //     // }
+        //     // @tagName(value: anytype)
+        // }
+
         pub fn query(self: *Self) *QueryBuilder(Self) {
             // Errrk so ugly
             if (self.query_builder.context != self) {
@@ -314,7 +358,7 @@ pub fn Context(comptime config: anytype) type {
             return &self.query_builder;
         }
 
-        pub fn addSystem(self: *Self, system: System(*Self)) void {
+        pub fn addSystem(self: *Self, system: System(Self)) void {
             self.systems.append(system) catch unreachable;
         }
 
@@ -335,6 +379,10 @@ pub fn Context(comptime config: anytype) type {
         pub fn getComponent(comptime component_name: ComponentName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
             return comptime @field(components, @tagName(component_name));
         }
+
+        // pub fn getComponentByString(comptime component_name: []const u8) @TypeOf(@field(components_definitions, component_name)) {
+        //     return comptime @field(components, component_name);
+        // }
 
         pub fn Resource(comptime field: meta.FieldEnum(Resources)) type {
             return comptime meta.fieldInfo(Resources, field).field_type;
@@ -417,6 +465,16 @@ pub fn Context(comptime config: anytype) type {
         }
     };
 }
+
+// pub fn stringToEnum(comptime T: type, comptime str: []const u8) ?T {
+//     meta.stringToEnum(comptime T: type, str: []const u8)
+//     inline for (@typeInfo(T).Enum.fields) |enumField| {
+//         if (std.mem.eql(u8, str, enumField.name)) {
+//             return @field(T, enumField.name);
+//         }
+//     }
+//     return null;
+// }
 
 test "Create Context type with comptime components" {
     comptime {
@@ -1230,6 +1288,47 @@ test "Can write component data" {
     try expect(data.x == 10);
     try expect(data.y == 20);
 }
+
+// test "Can assign component data" {
+//     const Ecs = Context(.{
+//         .components = .{
+//             Component("Position", struct { x: f32, y: f32 }),
+//             Component("Velocity", struct { x: f32, y: f32 }),
+//         },
+//         .Resources = struct {},
+//         .capacity = 1,
+//     });
+
+//     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+//     defer arena.deinit();
+
+//     try Ecs.setup(arena.child_allocator);
+//     defer Ecs.unsetup();
+
+//     var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+//     defer ecs.deinit();
+
+//     const entity = ecs.createEmpty();
+//     ecs.assign(entity, .{
+//         .Position = .{
+//             .x = 10,
+//             .y = 20,
+//         },
+//         .Velocity = .{
+//             .x = 40,
+//             .y = 50,
+//         },
+//     });
+
+//     var position = ecs.clone(entity, .Position);
+//     var velocity = ecs.clone(entity, .Velocity);
+
+//     try expect(position.x == 10);
+//     try expect(position.y == 20);
+
+//     try expect(velocity.x == 40);
+//     try expect(velocity.y == 50);
+// }
 
 test "Can set component prop" {
     const Ecs = Context(.{

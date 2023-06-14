@@ -132,6 +132,7 @@ pub fn ComponentStorage(comptime component: anytype) type {
         // this is a copy op not a read op
         pub fn clone(self: *Self, entity: Entity) Schema {
             var result: Schema = undefined;
+
             inline for (fields) |field_info| {
                 @field(result, field_info.name) = @field(self.cached_items, field_info.name)[entity];
             }
