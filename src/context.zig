@@ -6,10 +6,13 @@ const expect = @import("std").testing.expect;
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const ComponentStorage = @import("./component.zig").ComponentStorage;
+const Tag = @import("./component.zig").Tag;
 const Packed = @import("./component.zig").Packed;
+
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
 const ArchetypeStorage = @import("./archetype-storage.zig").ArchetypeStorage;
+
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const SparseArray = @import("./sparse-array.zig").SparseArray;
 const QueryBuilder = @import("./query.zig").QueryBuilder;
@@ -466,16 +469,6 @@ pub fn Context(comptime config: anytype) type {
     };
 }
 
-// pub fn stringToEnum(comptime T: type, comptime str: []const u8) ?T {
-//     meta.stringToEnum(comptime T: type, str: []const u8)
-//     inline for (@typeInfo(T).Enum.fields) |enumField| {
-//         if (std.mem.eql(u8, str, enumField.name)) {
-//             return @field(T, enumField.name);
-//         }
-//     }
-//     return null;
-// }
-
 test "Create Context type with comptime components" {
     comptime {
         const Ecs = Context(.{
@@ -756,6 +749,38 @@ test "Can detach component" {
 
     ecs.detach(ent, .Velocity);
     try expect(!ecs.has(ent, .Velocity));
+}
+
+test "Can create tag component" {
+    const Ecs = Context(.{
+        .components = .{
+            Tag("Alive"),
+            Tag("Dead"),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
+
+    var ent = ecs.createEmpty();
+
+    ecs.attach(ent, .Alive);
+
+    try expect(ecs.has(ent, .Alive));
+
+    ecs.detach(ent, .Alive);
+    try expect(!ecs.has(ent, .Alive));
+
+    ecs.attach(ent, .Dead);
+    try expect(ecs.has(ent, .Dead));
 }
 
 test "Can generate archetype" {

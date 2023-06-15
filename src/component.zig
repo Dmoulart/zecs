@@ -4,6 +4,11 @@ var global_component_counter: u64 = 1;
 
 pub const ComponentId = u64;
 
+pub fn Tag(comptime component_name: []const u8) type {
+    // @todo make a real tag implementation without any fields
+    return Component(component_name, struct { field: bool });
+}
+
 pub fn Component(comptime component_name: []const u8, comptime T: type) type {
     return struct {
         const Self = @This();
@@ -62,8 +67,15 @@ pub fn Packed(comptime Schema: anytype) type {
 pub fn ComponentStorage(comptime component: anytype) type {
     const ComponentsSchemaFields = std.meta.fields(component.Schema);
 
+    const is_tag = ComponentsSchemaFields.len == 0;
+
     const SchemaItems = comptime blk: {
+        if (is_tag) {
+            break :blk struct {};
+        }
+
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
+
         var Field = std.meta.FieldEnum(component.Schema);
 
         inline for (ComponentsSchemaFields) |field, i| {
