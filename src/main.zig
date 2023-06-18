@@ -2,11 +2,12 @@ const std = @import("std");
 const expect = std.testing.expect;
 const mem = @import("std").mem;
 
-pub const Component = @import("./component.zig").Component;
-pub const Archetype = @import("./archetype.zig").Archetype;
 pub const Context = @import("./context.zig").Context;
 pub const Entity = @import("./entity-storage.zig").Entity;
+pub const Component = @import("./component.zig").Component;
 pub const System = @import("./system.zig").System;
+pub const Tag = @import("./component.zig").Tag;
+pub const Archetype = @import("./archetype.zig").Archetype;
 pub const SparseSet = @import("./sparse-set.zig").SparseSet;
 pub const Query = @import("./query.zig").Query;
 pub const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
