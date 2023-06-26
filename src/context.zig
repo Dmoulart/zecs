@@ -415,13 +415,13 @@ pub fn Context(comptime config: anytype) type {
             } else {
                 var new_archetype = self.archetypes.derive(archetype, component.id);
 
+                self.swapArchetypes(entity, archetype, new_archetype);
+
                 // match against queries
                 var queries = self.query_builder.queries.iterator();
                 while (queries.next()) |*existant_query| {
                     existant_query.value_ptr.maybeRegisterArchetype(new_archetype);
                 }
-
-                self.swapArchetypes(entity, archetype, new_archetype);
             }
         }
 
@@ -1537,4 +1537,44 @@ test "Can run systems" {
     var pos_8 = ecs.clone(8, .Position);
     try expect(pos_8.x == 2);
     try expect(pos_8.y == 2);
+}
+
+test "onEnter callbacks are executed after new archetype enter the query" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+
+    var query = ecs.query().all(.{ .Position, .Velocity }).execute();
+
+    const setPos = (struct {
+        pub fn setPos(context: *Ecs, entity: Entity) void {
+            context.set(entity, .Position, .x, 100);
+        }
+    }).setPos;
+
+    query.onEnter(setPos);
+
+    var entity = ecs.createEmpty();
+    ecs.attach(entity, .Position);
+    ecs.attach(entity, .Velocity);
+
+    var x = ecs.get(entity, .Position, .x);
+    try expect(x.* == 100);
 }
