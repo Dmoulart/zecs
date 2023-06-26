@@ -74,7 +74,7 @@ pub fn Query(comptime ContextType: anytype) type {
             _ = self.archetypes.append(archetype) catch null;
 
             if (self.on_enter) |on_enter| {
-                for (archetype.entities.values) |entity| {
+                for (archetype.entities.toSlice()) |entity| {
                     on_enter(self.context, entity);
                 }
             }
@@ -87,7 +87,7 @@ pub fn Query(comptime ContextType: anytype) type {
             return false;
         }
 
-        pub fn onEnter(self: *Self, function: OnEnterQuery(*ContextType)) void {
+        pub fn onEnter(self: *Self, function: OnEnterQuery(ContextType)) void {
             self.on_enter = function;
         }
 

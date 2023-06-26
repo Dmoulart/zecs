@@ -13,7 +13,50 @@ pub const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 pub const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
-    try bench();
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    try Ecs.setup(arena.child_allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    defer ecs.deinit();
+
+    var query = ecs.query().all(.{ .Position, .Velocity }).execute();
+
+    const setPos = (struct {
+        pub fn setPos(context: *Ecs, entity: Entity) void {
+            var x = context.get(entity, .Position, .x);
+            x.* += 10;
+        }
+    }).setPos;
+
+    query.onEnter(setPos);
+
+    var entity = ecs.createEmpty();
+    ecs.attach(entity, .Position);
+    //init pos
+    ecs.set(entity, .Position, .x, 0);
+    ecs.attach(entity, .Velocity);
+
+    var x = ecs.get(entity, .Position, .x);
+
+    std.debug.print("x {}", .{x.*});
 }
 
 pub fn bench() !void {
