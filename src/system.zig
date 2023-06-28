@@ -6,6 +6,6 @@ pub fn System(comptime ContextType: type) type {
     return *const fn (ContextType) void;
 }
 
-pub fn OnEnterQuery(comptime ContextType: type) type {
+pub fn QueryCallback(comptime ContextType: type) type {
     return *const fn (*ContextType, Entity) void;
 }

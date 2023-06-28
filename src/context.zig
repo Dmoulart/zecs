@@ -17,7 +17,7 @@ const Query = @import("./query.zig").Query;
 const Entity = @import("./entity-storage.zig").Entity;
 const EntityStorage = @import("./entity-storage.zig").EntityStorage;
 const System = @import("./system.zig").System;
-const OnEnterQuery = @import("./system.zig").OnEnterQuery;
+const QueryCallback = @import("./system.zig").QueryCallback;
 
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
@@ -92,7 +92,7 @@ pub fn Context(comptime config: anytype) type {
 
         systems: std.ArrayList(System(*Self)),
 
-        // on_add: SparseArray(usize, OnEnterQuery(*Self)),
+        // on_add: SparseArray(usize, QueryCallback(*Self)),
 
         query_builder: QueryBuilder(Self),
 
@@ -167,7 +167,7 @@ pub fn Context(comptime config: anytype) type {
                 ),
                 .root = archetypes.getRoot(),
                 .systems = std.ArrayList(System(*Self)).init(options.allocator),
-                // .on_add = SparseArray(usize, OnEnterQuery(*Self)).init(.{
+                // .on_add = SparseArray(usize, QueryCallback(*Self)).init(.{
                 //     .allocator = options.allocator,
                 //     .capacity = archetypes.capacity,
                 // }),
@@ -1435,19 +1435,55 @@ test "onEnter callbacks are executed after new archetype enter the query" {
     var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
     defer ecs.deinit();
 
-    var query = ecs.query().all(.{ .Position, .Velocity }).execute();
-
     const setPos = (struct {
         pub fn setPos(context: *Ecs, entity: Entity) void {
             context.set(entity, .Position, .x, 100);
         }
     }).setPos;
 
-    query.onEnter(setPos);
+    _ = ecs.query().all(.{ .Position, .Velocity }).onEnter(setPos).execute();
 
     var entity = ecs.createEmpty();
     ecs.attach(entity, .Position);
     ecs.attach(entity, .Velocity);
+
+    var x = ecs.get(entity, .Position, .x);
+    try expect(x.* == 100);
+}
+
+test "onEnter callbacks are executed on query creation" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {},
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+
+    var entity = ecs.createEmpty();
+    ecs.attach(entity, .Position);
+    ecs.attach(entity, .Velocity);
+
+    const setPos = (struct {
+        pub fn setPos(context: *Ecs, ent: Entity) void {
+            context.set(ent, .Position, .x, 100);
+        }
+    }).setPos;
+
+    _ = ecs.query().all(.{ .Position, .Velocity }).onEnter(setPos).execute();
 
     var x = ecs.get(entity, .Position, .x);
     try expect(x.* == 100);
