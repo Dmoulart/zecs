@@ -33,6 +33,8 @@ pub fn Query(comptime ContextType: anytype) type {
 
         on_enter: ?QueryCallback(ContextType),
 
+        on_exit: ?QueryCallback(ContextType),
+
         pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
             return Self{
                 .allocator = allocator,
@@ -40,6 +42,7 @@ pub fn Query(comptime ContextType: anytype) type {
                 .archetypes = std.ArrayList(*Archetype).init(allocator),
                 .context = undefined,
                 .on_enter = null,
+                .on_exit = null,
             };
         }
 
@@ -193,6 +196,11 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
 
         pub fn onEnter(self: *Self, function: QueryCallback(ContextType)) *Self {
             self.prepared_on_enter = function;
+            return self;
+        }
+
+        pub fn onExit(self: *Self, function: QueryCallback(ContextType)) *Self {
+            self.prepared_on_exit = function;
             return self;
         }
 
