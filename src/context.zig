@@ -1443,12 +1443,19 @@ test "onEnter callbacks are executed after new archetype enter the query" {
 
     _ = ecs.query().all(.{ .Position, .Velocity }).onEnter(setPos).execute();
 
-    var entity = ecs.createEmpty();
-    ecs.attach(entity, .Position);
-    ecs.attach(entity, .Velocity);
+    var first_entity = ecs.createEmpty();
+    ecs.attach(first_entity, .Position);
+    ecs.attach(first_entity, .Velocity);
 
-    var x = ecs.get(entity, .Position, .x);
-    try expect(x.* == 100);
+    var first_entity_x = ecs.get(first_entity, .Position, .x);
+    try expect(first_entity_x.* == 100);
+
+    var second_entity = ecs.createEmpty();
+    ecs.attach(second_entity, .Position);
+    ecs.attach(second_entity, .Velocity);
+
+    var second_entity_x = ecs.get(second_entity, .Position, .x);
+    try expect(second_entity_x.* == 100);
 }
 
 test "onEnter callbacks are executed on query creation" {
