@@ -6,7 +6,7 @@ const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
 const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 const String = @import("./lib/string/string.zig").String;
-const OnEnterQuery = @import("./system.zig").OnEnterQuery;
+const QueryCallback = @import("./system.zig").QueryCallback;
 
 pub const MAX_COMPONENTS_PER_QUERY_MATCHER = 100;
 
@@ -31,7 +31,7 @@ pub fn Query(comptime ContextType: anytype) type {
 
         context: *ContextType,
 
-        on_enter: ?OnEnterQuery(ContextType),
+        on_enter: ?QueryCallback(ContextType),
 
         pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
             return Self{
@@ -87,10 +87,6 @@ pub fn Query(comptime ContextType: anytype) type {
             return false;
         }
 
-        pub fn onEnter(self: *Self, function: OnEnterQuery(ContextType)) void {
-            self.on_enter = function;
-        }
-
         fn execute(self: *Self, context: anytype) void {
             for (context.archetypes.all.items) |*archetype| {
                 self.maybeRegisterArchetype(archetype);
@@ -125,9 +121,12 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
 
         allocator: std.mem.Allocator,
 
+        prepared_on_enter: ?QueryCallback(ContextType),
+        prepared_on_exit: ?QueryCallback(ContextType),
+
         prepared_query_matchers: std.ArrayList(QueryMatcher),
 
-        // Todo: make comptime string ds
+        // Todo: make comptime string ds ?
         prepared_query_hash: String,
 
         queries: std.hash_map.StringHashMap(Query(ContextType)),
@@ -143,12 +142,15 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
                 .queries = std.hash_map.StringHashMap(Query(ContextType)).init(allocator),
                 .context = undefined,
                 .prepared_query_hash = prepared_query_hash,
+                .prepared_on_enter = null,
+                .prepared_on_exit = null,
             };
         }
 
         pub fn deinit(self: *Self) void {
             self.prepared_query_matchers.deinit();
             var queries = self.queries.valueIterator();
+
             while (queries.next()) |query| {
                 // The archetypes and matchers need to be freed from query builder I don't know why.
                 query.archetypes.deinit();
@@ -156,6 +158,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
 
                 query.deinit();
             }
+
             self.queries.deinit();
             self.prepared_query_hash.deinit();
         }
@@ -188,6 +191,45 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
             return self;
         }
 
+        pub fn onEnter(self: *Self, function: QueryCallback(ContextType)) *Self {
+            self.prepared_on_enter = function;
+            return self;
+        }
+
+        pub fn execute(self: *Self) *Query(ContextType) {
+            const hash = self.prepared_query_hash.str();
+
+            var query = self.queries.getOrPut(hash) catch unreachable;
+
+            if (query.found_existing) {
+                self.clearPreparedQuery();
+                return query.value_ptr;
+            }
+
+            var created_query = Query(ContextType).init(
+                self.prepared_query_matchers.clone() catch unreachable,
+                self.allocator,
+            );
+
+            created_query.context = self.context;
+
+            if (self.prepared_on_enter) |callback| {
+                created_query.on_enter = callback;
+            }
+
+            if (self.prepared_on_exit) |callback| {
+                created_query.on_exit = callback;
+            }
+
+            created_query.execute(self.context);
+
+            query.value_ptr.* = created_query;
+
+            self.clearPreparedQuery();
+
+            return query.value_ptr;
+        }
+
         fn createMatcher(self: *Self, comptime componentsTypes: anytype, comptime matcher_type: QueryMatcherType) void {
             const components = comptime std.meta.fields(@TypeOf(componentsTypes));
 
@@ -213,35 +255,11 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
             }) catch unreachable;
         }
 
-        pub fn execute(self: *Self) *Query(ContextType) {
-            const hash = self.prepared_query_hash.str();
-
-            var query = self.queries.getOrPut(hash) catch unreachable;
-
-            if (query.found_existing) {
-                self.clearPreparedQuery();
-                return query.value_ptr;
-            }
-
-            var created_query = Query(ContextType).init(
-                self.prepared_query_matchers.clone() catch unreachable,
-                self.allocator,
-            );
-
-            created_query.context = self.context;
-
-            created_query.execute(self.context);
-
-            query.value_ptr.* = created_query;
-
-            self.clearPreparedQuery();
-
-            return query.value_ptr;
-        }
-
         fn clearPreparedQuery(self: *Self) void {
             self.prepared_query_hash.clear();
             self.prepared_query_matchers.clearAndFree();
+            self.prepared_on_enter = null;
+            self.prepared_on_exit = null;
         }
     };
 }
