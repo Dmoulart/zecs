@@ -77,14 +77,31 @@ pub fn Query(comptime ContextType: anytype) type {
             _ = self.archetypes.append(archetype) catch null;
 
             if (self.on_enter) |on_enter| {
-                self.context.archetypes.on_enter_callbacks.put(archetype.id, on_enter) catch unreachable;
+                var callbacks_array = self.context.archetypes.on_enter_callbacks.getOrPut(archetype.id) catch unreachable;
+
+                if (!callbacks_array.found_existing) {
+                    var created_callbacks_array = std.ArrayList(QueryCallback(ContextType)).init(self.context.archetypes.allocator);
+                    callbacks_array.value_ptr.* = created_callbacks_array;
+                }
+
+                callbacks_array.value_ptr.append(on_enter) catch unreachable;
+
                 for (archetype.entities.toSlice()) |entity| {
                     on_enter(self.context, entity);
                 }
             }
 
             if (self.on_exit) |on_exit| {
-                self.context.archetypes.on_exit_callbacks.put(archetype.id, on_exit) catch unreachable;
+                var callbacks_array = self.context.archetypes.on_exit_callbacks.getOrPut(archetype.id) catch unreachable;
+
+                if (!callbacks_array.found_existing) {
+                    var created_callbacks_array = std.ArrayList(QueryCallback(ContextType)).init(self.context.archetypes.allocator);
+                    callbacks_array.value_ptr.* = created_callbacks_array;
+                }
+
+                callbacks_array.value_ptr.append(on_exit) catch unreachable;
+
+                // self.context.archetypes.on_exit_callbacks.put(archetype.id, on_exit) catch unreachable;
             }
         }
 

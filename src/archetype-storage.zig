@@ -24,9 +24,9 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
 
         all: std.ArrayList(Archetype),
 
-        on_enter_callbacks: std.AutoHashMap(Archetype.Id, QueryCallback(Context)),
+        on_enter_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
 
-        on_exit_callbacks: std.AutoHashMap(Archetype.Id, QueryCallback(Context)),
+        on_exit_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
 
         capacity: u32,
 
@@ -38,8 +38,8 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
 
             var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
 
-            var on_enter_callbacks = std.AutoHashMap(Archetype.Id, QueryCallback(Context)).init(allocator);
-            var on_exit_callbacks = std.AutoHashMap(Archetype.Id, QueryCallback(Context)).init(allocator);
+            var on_enter_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
+            var on_exit_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
 
             var storage = Self{
                 .allocator = allocator,
@@ -63,7 +63,16 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
             }
             self.all.deinit();
 
+            var on_enter_callbacks = self.on_enter_callbacks.iterator();
+            while (on_enter_callbacks.next()) |*entry| {
+                entry.value_ptr.deinit();
+            }
             self.on_enter_callbacks.deinit();
+
+            var on_exit_callbacks = self.on_exit_callbacks.iterator();
+            while (on_exit_callbacks.next()) |*entry| {
+                entry.value_ptr.deinit();
+            }
             self.on_exit_callbacks.deinit();
         }
 

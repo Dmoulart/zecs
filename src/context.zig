@@ -434,13 +434,17 @@ pub fn Context(comptime config: anytype) type {
 
             old.entities.removeUnsafe(entity);
 
-            if (self.archetypes.on_exit_callbacks.get(old.id)) |on_exit| {
-                on_exit(self, entity);
+            if (self.archetypes.on_exit_callbacks.get(old.id)) |*on_exit_callbacks| {
+                for (on_exit_callbacks.items) |on_exit| {
+                    on_exit(self, entity);
+                }
             }
 
             new.entities.add(entity);
-            if (self.archetypes.on_enter_callbacks.get(new.id)) |on_enter| {
-                on_enter(self, entity);
+            if (self.archetypes.on_enter_callbacks.get(new.id)) |*on_enter_callbacks| {
+                for (on_enter_callbacks.items) |on_enter| {
+                    on_enter(self, entity);
+                }
             }
         }
 
@@ -1681,4 +1685,63 @@ test "onExit callbacks are executed after new archetype enter the query" {
 
     ecs.detach(first_entity, .Velocity);
     try expect(on_exit_count.* == 1);
+}
+
+test "Multiple onEnter and onExit callbacks can coexist" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {
+            inc: i32 = 0,
+        },
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+
+    const Callbacks = struct {
+        pub fn setPos(context: *Ecs, ent: Entity) void {
+            context.set(ent, .Position, .x, 10);
+        }
+        pub fn setVel(context: *Ecs, ent: Entity) void {
+            context.set(ent, .Velocity, .x, 20);
+        }
+        pub fn incrementResource(context: *Ecs, ent: Entity) void {
+            _ = ent;
+            var inc = context.getResourcePtr(.inc);
+            inc.* += 1;
+        }
+    };
+
+    _ = ecs.query().all(.{.Position}).onEnter(Callbacks.setPos).execute();
+    _ = ecs.query().all(.{.Velocity}).onEnter(Callbacks.setVel).execute();
+    _ = ecs.query().any(.{ .Position, .Velocity }).onEnter(Callbacks.incrementResource).execute();
+
+    var entity = ecs.createEmpty();
+
+    ecs.attach(entity, .Position);
+
+    var x = ecs.get(entity, .Position, .x);
+    try expect(x.* == 10);
+    var inc = ecs.getResourcePtr(.inc);
+    try expect(inc.* == 1);
+
+    // this component adding should not re-trigger the same old query callbacks, because we didn't leave the query
+    ecs.attach(entity, .Velocity);
+    try expect(x.* == 10);
+    try expect(inc.* == 1);
+
+    // ecs.attach(entity, .Velocity);
 }
