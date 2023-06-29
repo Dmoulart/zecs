@@ -77,9 +77,14 @@ pub fn Query(comptime ContextType: anytype) type {
             _ = self.archetypes.append(archetype) catch null;
 
             if (self.on_enter) |on_enter| {
+                self.context.archetypes.on_enter_callbacks.put(archetype.id, on_enter) catch unreachable;
                 for (archetype.entities.toSlice()) |entity| {
                     on_enter(self.context, entity);
                 }
+            }
+
+            if (self.on_exit) |on_exit| {
+                self.context.archetypes.on_exit_callbacks.put(archetype.id, on_exit) catch unreachable;
             }
         }
 
@@ -194,13 +199,13 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
             return self;
         }
 
-        pub fn onEnter(self: *Self, function: QueryCallback(ContextType)) *Self {
-            self.prepared_on_enter = function;
+        pub fn onEnter(self: *Self, on_enter_callback: QueryCallback(ContextType)) *Self {
+            self.prepared_on_enter = on_enter_callback;
             return self;
         }
 
-        pub fn onExit(self: *Self, function: QueryCallback(ContextType)) *Self {
-            self.prepared_on_exit = function;
+        pub fn onExit(self: *Self, on_exit_callback: QueryCallback(ContextType)) *Self {
+            self.prepared_on_exit = on_exit_callback;
             return self;
         }
 
@@ -266,6 +271,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
         fn clearPreparedQuery(self: *Self) void {
             self.prepared_query_hash.clear();
             self.prepared_query_matchers.clearAndFree();
+
             self.prepared_on_enter = null;
             self.prepared_on_exit = null;
         }

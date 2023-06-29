@@ -24,39 +24,41 @@ pub fn main() !void {
                 y: i32,
             }),
         },
-        .Resources = struct {},
+        .Resources = struct {
+            on_exit_count: u32 = 0,
+        },
         .capacity = 10,
     });
 
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-
-    try Ecs.setup(arena.child_allocator);
+    try Ecs.setup(std.heap.page_allocator);
     defer Ecs.unsetup();
 
-    var ecs = try Ecs.init(.{ .allocator = arena.child_allocator });
+    var ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
     defer ecs.deinit();
 
-    var query = ecs.query().all(.{ .Position, .Velocity }).execute();
-
-    const setPos = (struct {
-        pub fn setPos(context: *Ecs, entity: Entity) void {
-            var x = context.get(entity, .Position, .x);
-            x.* += 10;
+    const count = (struct {
+        pub fn count(context: *Ecs, entity: Entity) void {
+            _ = entity;
+            var on_exit_count = context.getResource(.on_exit_count);
+            context.setResource(.on_exit_count, on_exit_count + 1);
         }
-    }).setPos;
+    }).count;
 
-    query.onEnter(setPos);
+    _ = ecs.query().all(.{ .Position, .Velocity }).onExit(count).execute();
 
-    var entity = ecs.createEmpty();
-    ecs.attach(entity, .Position);
-    //init pos
-    ecs.set(entity, .Position, .x, 0);
-    ecs.attach(entity, .Velocity);
+    var first_entity = ecs.createEmpty();
+    ecs.attach(first_entity, .Position);
+    ecs.attach(first_entity, .Velocity);
 
-    var x = ecs.get(entity, .Position, .x);
+    var on_exit_count = ecs.getResourcePtr(.on_exit_count);
 
-    std.debug.print("x {}", .{x.*});
+    try expect(on_exit_count.* == 0);
+
+    ecs.detach(first_entity, .Position);
+    try expect(on_exit_count.* == 1);
+
+    ecs.detach(first_entity, .Velocity);
+    try expect(on_exit_count.* == 1);
 }
 
 pub fn bench() !void {

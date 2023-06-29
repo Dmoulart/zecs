@@ -86,11 +86,11 @@ pub fn Context(comptime config: anytype) type {
 
         allocator: std.mem.Allocator,
 
-        archetypes: ArchetypeStorage,
+        archetypes: ArchetypeStorage(Self),
 
         entities: EntityStorage,
 
-        systems: std.ArrayList(System(*Self)),
+        systems: std.ArrayList(System(Self)),
 
         // on_add: SparseArray(usize, QueryCallback(*Self)),
 
@@ -148,7 +148,7 @@ pub fn Context(comptime config: anytype) type {
 
             var archetypes_storage_capacity = options.archetypes_capacity;
 
-            var archetypes = try ArchetypeStorage.init(.{
+            var archetypes = try ArchetypeStorage(Self).init(.{
                 .capacity = archetypes_storage_capacity,
                 .archetype_capacity = capacity,
             }, options.allocator);
@@ -166,7 +166,7 @@ pub fn Context(comptime config: anytype) type {
                     options.allocator,
                 ),
                 .root = archetypes.getRoot(),
-                .systems = std.ArrayList(System(*Self)).init(options.allocator),
+                .systems = std.ArrayList(System(Self)).init(options.allocator),
                 // .on_add = SparseArray(usize, QueryCallback(*Self)).init(.{
                 //     .allocator = options.allocator,
                 //     .capacity = archetypes.capacity,
@@ -314,11 +314,11 @@ pub fn Context(comptime config: anytype) type {
             return &self.query_builder;
         }
 
-        pub fn addSystem(self: *Self, system: System(*Self)) void {
+        pub fn addSystem(self: *Self, system: System(Self)) void {
             self.systems.append(system) catch unreachable;
         }
 
-        // pub fn addSystem(self: *Self, system: System(*Self)) void {
+        // pub fn addSystem(self: *Self, system: System(Self)) void {
         //     self.systems.append(system) catch unreachable;
         // }
 
@@ -342,6 +342,10 @@ pub fn Context(comptime config: anytype) type {
 
         pub fn getResource(self: *Self, comptime field: meta.FieldEnum(Resources)) Resource(field) {
             return comptime @field(self.resources, @tagName(field));
+        }
+
+        pub fn getResourcePtr(self: *Self, comptime field: meta.FieldEnum(Resources)) *Resource(field) {
+            return comptime &@field(self.resources, @tagName(field));
         }
 
         pub fn setResource(self: *Self, comptime field: meta.FieldEnum(Resources), value: Resource(field)) void {
@@ -376,7 +380,15 @@ pub fn Context(comptime config: anytype) type {
             self.entities.setArchetype(entity, new);
 
             old.entities.removeUnsafe(entity);
+
+            if (self.archetypes.on_exit_callbacks.get(old.id)) |on_exit| {
+                on_exit(self, entity);
+            }
+
             new.entities.add(entity);
+            if (self.archetypes.on_enter_callbacks.get(new.id)) |on_enter| {
+                on_enter(self, entity);
+            }
         }
 
         // Create a pr-egenerated entity type from a set of components.
@@ -1494,4 +1506,53 @@ test "onEnter callbacks are executed on query creation" {
 
     var x = ecs.get(entity, .Position, .x);
     try expect(x.* == 100);
+}
+
+test "onExit callbacks are executed after new archetype enter the query" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {
+            on_exit_count: u32 = 0,
+        },
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{ .allocator = std.testing.allocator });
+    defer ecs.deinit();
+
+    const count = (struct {
+        pub fn count(context: *Ecs, entity: Entity) void {
+            _ = entity;
+            var on_exit_count = context.getResource(.on_exit_count);
+            context.setResource(.on_exit_count, on_exit_count + 1);
+        }
+    }).count;
+
+    _ = ecs.query().all(.{ .Position, .Velocity }).onExit(count).execute();
+
+    var first_entity = ecs.createEmpty();
+    ecs.attach(first_entity, .Position);
+    ecs.attach(first_entity, .Velocity);
+
+    var on_exit_count = ecs.getResourcePtr(.on_exit_count);
+
+    try expect(on_exit_count.* == 0);
+
+    ecs.detach(first_entity, .Position);
+    try expect(on_exit_count.* == 1);
+
+    ecs.detach(first_entity, .Velocity);
+    try expect(on_exit_count.* == 1);
 }
