@@ -17,9 +17,11 @@ const ARCHETYPE_BITSET_CAPACITY: u32 = 50;
 pub const Archetype = struct {
     const Self = @This();
 
+    pub const Id = u32;
+
     var counter: u32 = 0;
 
-    id: u32,
+    id: Id,
 
     mask: ArchetypeMask,
 

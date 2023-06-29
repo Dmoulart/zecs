@@ -1,74 +1,92 @@
 const std = @import("std");
+
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
+
 const ArchetypeMask = @import("./archetype.zig").ArchetypeMask;
 const Archetype = @import("./archetype.zig").Archetype;
+
+const QueryCallback = @import("./system.zig").QueryCallback;
 
 pub const DEFAULT_ARCHETYPE_CAPACITY = 10_000;
 pub const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = 1000;
 
-pub const ArchetypeStorage = struct {
-    const Self = @This();
+pub fn ArchetypeStorage(comptime Context: anytype) type {
+    return struct {
+        const Self = @This();
 
-    const ArchetypeStorageOptions = struct {
-        capacity: ?u32,
-        archetype_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
-    };
-
-    allocator: std.mem.Allocator,
-
-    all: std.ArrayList(Archetype),
-
-    capacity: u32,
-
-    archetype_capacity: u32,
-
-    pub fn init(options: ArchetypeStorageOptions, allocator: std.mem.Allocator) !Self {
-        var capacity = options.capacity orelse DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
-        var archetype_capacity = options.archetype_capacity orelse DEFAULT_ARCHETYPE_CAPACITY;
-
-        var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
-
-        var storage = Self{
-            .allocator = allocator,
-            .all = all,
-            .capacity = capacity,
-            .archetype_capacity = archetype_capacity,
+        const ArchetypeStorageOptions = struct {
+            capacity: ?u32,
+            archetype_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
         };
 
-        var root = Archetype.build(.{}, allocator, archetype_capacity);
+        allocator: std.mem.Allocator,
 
-        storage.all.appendAssumeCapacity(root);
+        all: std.ArrayList(Archetype),
 
-        return storage;
-    }
+        on_enter_callbacks: std.AutoHashMap(Archetype.Id, QueryCallback(Context)),
 
-    pub fn deinit(self: *Self) void {
-        for (self.all.items) |*arch| {
-            arch.deinit();
+        on_exit_callbacks: std.AutoHashMap(Archetype.Id, QueryCallback(Context)),
+
+        capacity: u32,
+
+        archetype_capacity: u32,
+
+        pub fn init(options: ArchetypeStorageOptions, allocator: std.mem.Allocator) !Self {
+            var capacity = options.capacity orelse DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
+            var archetype_capacity = options.archetype_capacity orelse DEFAULT_ARCHETYPE_CAPACITY;
+
+            var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
+
+            var on_enter_callbacks = std.AutoHashMap(Archetype.Id, QueryCallback(Context)).init(allocator);
+            var on_exit_callbacks = std.AutoHashMap(Archetype.Id, QueryCallback(Context)).init(allocator);
+
+            var storage = Self{
+                .allocator = allocator,
+                .all = all,
+                .capacity = capacity,
+                .archetype_capacity = archetype_capacity,
+                .on_enter_callbacks = on_enter_callbacks,
+                .on_exit_callbacks = on_exit_callbacks,
+            };
+
+            var root = Archetype.build(.{}, allocator, archetype_capacity);
+
+            storage.all.appendAssumeCapacity(root);
+
+            return storage;
         }
-        self.all.deinit();
-    }
 
-    pub fn derive(self: *Self, archetype: *Archetype, component_id: ComponentId) *Archetype {
-        var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity);
-        var new_archetype = self.register(&derived);
+        pub fn deinit(self: *Self) void {
+            for (self.all.items) |*arch| {
+                arch.deinit();
+            }
+            self.all.deinit();
 
-        new_archetype.edge.set(component_id, archetype);
-        archetype.edge.set(component_id, new_archetype);
+            self.on_enter_callbacks.deinit();
+            self.on_exit_callbacks.deinit();
+        }
 
-        return new_archetype;
-    }
+        pub fn derive(self: *Self, archetype: *Archetype, component_id: ComponentId) *Archetype {
+            var derived = archetype.derive(component_id, self.allocator, self.archetype_capacity);
+            var new_archetype = self.register(&derived);
 
-    pub fn register(
-        self: *Self,
-        archetype: *Archetype,
-    ) *Archetype {
-        self.all.appendAssumeCapacity(archetype.*);
-        return &self.all.items[self.all.items.len - 1];
-    }
+            new_archetype.edge.set(component_id, archetype);
+            archetype.edge.set(component_id, new_archetype);
 
-    pub fn getRoot(self: *Self) *Archetype {
-        return &self.all.items[0];
-    }
-};
+            return new_archetype;
+        }
+
+        pub fn register(
+            self: *Self,
+            archetype: *Archetype,
+        ) *Archetype {
+            self.all.appendAssumeCapacity(archetype.*);
+            return &self.all.items[self.all.items.len - 1];
+        }
+
+        pub fn getRoot(self: *Self) *Archetype {
+            return &self.all.items[0];
+        }
+    };
+}
