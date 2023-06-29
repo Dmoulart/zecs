@@ -167,10 +167,6 @@ pub fn Context(comptime config: anytype) type {
                 ),
                 .root = archetypes.getRoot(),
                 .systems = std.ArrayList(System(Self)).init(options.allocator),
-                // .on_add = SparseArray(usize, QueryCallback(*Self)).init(.{
-                //     .allocator = options.allocator,
-                //     .capacity = archetypes.capacity,
-                // }),
                 .resources = Resources{},
             };
 
