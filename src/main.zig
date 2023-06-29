@@ -14,52 +14,7 @@ pub const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 pub const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
-    const Ecs = Context(.{
-        .components = .{
-            Component("Position", struct {
-                x: i32,
-                y: i32,
-            }),
-            Component("Velocity", struct {
-                x: i32,
-                y: i32,
-            }),
-        },
-        .Resources = struct {
-            on_exit_count: u32 = 0,
-        },
-        .capacity = 10,
-    });
-
-    try Ecs.setup(std.heap.page_allocator);
-    defer Ecs.unsetup();
-
-    var ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
-    defer ecs.deinit();
-
-    const count = (struct {
-        pub fn count(context: *Ecs, entity: Entity) void {
-            _ = entity;
-            var on_exit_count = context.getResource(.on_exit_count);
-            context.setResource(.on_exit_count, on_exit_count + 1);
-        }
-    }).count;
-
-    _ = ecs.query().all(.{ .Position, .Velocity }).onExit(count).execute();
-
-    var first_entity = ecs.createEmpty();
-    ecs.attach(first_entity, .Position);
-    ecs.attach(first_entity, .Velocity);
-
-    var on_exit_count = ecs.getResourcePtr(.on_exit_count);
-
-    try expect(on_exit_count.* == 0);
-
-    ecs.detach(first_entity, .Position);
-    try expect(on_exit_count.* == 1);
-
-    ecs.detach(first_entity, .Velocity);
-    try expect(on_exit_count.* == 1);
+    try bench();
 }
 
 pub fn bench() !void {
