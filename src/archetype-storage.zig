@@ -12,6 +12,7 @@ pub const DEFAULT_ARCHETYPE_CAPACITY = 10_000;
 pub const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = 1000;
 
 pub fn ArchetypeStorage(comptime Context: anytype) type {
+    _ = Context;
     return struct {
         const Self = @This();
 
@@ -24,9 +25,9 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
 
         all: std.ArrayList(Archetype),
 
-        on_enter_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
+        // on_enter_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
 
-        on_exit_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
+        // on_exit_callbacks: std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))),
 
         capacity: u32,
 
@@ -38,16 +39,18 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
 
             var all = try std.ArrayList(Archetype).initCapacity(allocator, capacity);
 
-            var on_enter_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
-            var on_exit_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
+            // var on_enter_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
+            // _ = on_enter_callbacks;
+            // var on_exit_callbacks = std.AutoHashMap(Archetype.Id, std.ArrayList(QueryCallback(Context))).init(allocator);
+            // _ = on_exit_callbacks;
 
             var storage = Self{
                 .allocator = allocator,
                 .all = all,
                 .capacity = capacity,
                 .archetype_capacity = archetype_capacity,
-                .on_enter_callbacks = on_enter_callbacks,
-                .on_exit_callbacks = on_exit_callbacks,
+                // .on_enter_callbacks = on_enter_callbacks,
+                // .on_exit_callbacks = on_exit_callbacks,
             };
 
             var root = Archetype.build(.{}, allocator, archetype_capacity);
@@ -63,17 +66,17 @@ pub fn ArchetypeStorage(comptime Context: anytype) type {
             }
             self.all.deinit();
 
-            var on_enter_callbacks = self.on_enter_callbacks.iterator();
-            while (on_enter_callbacks.next()) |*entry| {
-                entry.value_ptr.deinit();
-            }
-            self.on_enter_callbacks.deinit();
+            // var on_enter_callbacks = self.on_enter_callbacks.iterator();
+            // while (on_enter_callbacks.next()) |*entry| {
+            //     entry.value_ptr.deinit();
+            // }
+            // self.on_enter_callbacks.deinit();
 
-            var on_exit_callbacks = self.on_exit_callbacks.iterator();
-            while (on_exit_callbacks.next()) |*entry| {
-                entry.value_ptr.deinit();
-            }
-            self.on_exit_callbacks.deinit();
+            // var on_exit_callbacks = self.on_exit_callbacks.iterator();
+            // while (on_exit_callbacks.next()) |*entry| {
+            //     entry.value_ptr.deinit();
+            // }
+            // self.on_exit_callbacks.deinit();
         }
 
         pub fn derive(self: *Self, archetype: *Archetype, component_id: ComponentId) *Archetype {

@@ -14,64 +14,7 @@ pub const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
 pub const QueryBuilder = @import("./query.zig").QueryBuilder;
 
 pub fn main() !void {
-    const Ecs = Context(.{
-        .components = .{
-            Component("Position", struct {
-                x: i32,
-                y: i32,
-            }),
-            Component("Velocity", struct {
-                x: i32,
-                y: i32,
-            }),
-        },
-        .Resources = struct {
-            inc: i32 = 0,
-        },
-        .capacity = 10,
-    });
-
-    try Ecs.setup(std.heap.page_allocator);
-    defer Ecs.unsetup();
-
-    var ecs = try Ecs.init(.{ .allocator = std.heap.page_allocator });
-    defer ecs.deinit();
-
-    const Callbacks = struct {
-        pub fn setPos(context: *Ecs, ent: Entity) void {
-            context.set(ent, .Position, .x, 10);
-        }
-        pub fn setVel(context: *Ecs, ent: Entity) void {
-            context.set(ent, .Velocity, .x, 20);
-        }
-        pub fn incrementResource(context: *Ecs, ent: Entity) void {
-            _ = ent;
-            var inc = context.getResourcePtr(.inc);
-            inc.* += 1;
-        }
-    };
-
-    _ = ecs.query().all(.{.Position}).onEnter(Callbacks.setPos).execute();
-    _ = ecs.query().all(.{.Velocity}).onEnter(Callbacks.setVel).execute();
-    _ = ecs.query().any(.{ .Position, .Velocity }).onEnter(Callbacks.incrementResource).execute();
-
-    var entity = ecs.createEmpty();
-
-    ecs.attach(entity, .Position);
-
-    // var x = ecs.get(entity, .Position, .x);
-    // try expect(x.* == 10);
-    var inc = ecs.getResourcePtr(.inc);
-    // try expect(inc.* == 1);
-
-    // this component adding should not re-trigger the same old query callbacks, because we didn't leave the query
-    ecs.attach(entity, .Velocity);
-    // try expect(x.* == 10);
-    // try expect(inc.* == 1);
-
-    std.debug.print("\ninc {}\n", .{inc.*});
-
-    // try bench();
+    try bench();
 }
 
 pub fn bench() !void {
