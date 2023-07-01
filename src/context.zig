@@ -429,6 +429,10 @@ pub fn Context(comptime config: anytype) type {
             }
         }
 
+        // Optimize the query callbacks :
+        // maybe create a method pointer for the archetype/adding/removal on the archetype struct itself
+        // if the archetype is referenced by queries with callbacks then use the method with matching queries
+        // looping. If not use a simple method. This way there will be no overhead for archetype with no query callbacks
         fn swapArchetypes(self: *Self, entity: Entity, old: *Archetype, new: *Archetype) void {
             self.entities.setArchetype(entity, new);
 
