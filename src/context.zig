@@ -419,13 +419,13 @@ pub fn Context(comptime config: anytype) type {
             } else {
                 var new_archetype = self.archetypes.derive(archetype, component.id);
 
-                self.swapArchetypes(entity, archetype, new_archetype);
-
                 // match against queries
                 var queries = self.query_builder.queries.iterator();
                 while (queries.next()) |*existant_query| {
                     existant_query.value_ptr.maybeRegisterArchetype(new_archetype);
                 }
+
+                self.swapArchetypes(entity, archetype, new_archetype);
             }
         }
 
@@ -433,19 +433,38 @@ pub fn Context(comptime config: anytype) type {
             self.entities.setArchetype(entity, new);
 
             old.entities.removeUnsafe(entity);
-
-            if (self.archetypes.on_exit_callbacks.get(old.id)) |*on_exit_callbacks| {
-                for (on_exit_callbacks.items) |on_exit| {
-                    on_exit(self, entity);
+            for (old.matching_queries.toSlice()) |query_id| {
+                // If the same queries apply to the new and old arch don't apply the callback
+                if (!new.matching_queries.has(query_id)) {
+                    var query_to_exit = self.query_builder.queries_by_id.getUnsafe(query_id);
+                    if (query_to_exit.on_exit) |on_exit| {
+                        on_exit(self, entity);
+                    }
                 }
             }
+
+            // if (self.archetypes.on_exit_callbacks.get(old.id)) |*on_exit_callbacks| {
+            //     for (on_exit_callbacks.items) |on_exit| {
+            //         // if(new.matching_queries.has(value: T))
+            //         on_exit(self, entity);
+            //     }
+            // }
 
             new.entities.add(entity);
-            if (self.archetypes.on_enter_callbacks.get(new.id)) |*on_enter_callbacks| {
-                for (on_enter_callbacks.items) |on_enter| {
-                    on_enter(self, entity);
+            for (new.matching_queries.toSlice()) |query_id| {
+                // If the same queries apply to the new and old arch don't apply the callback
+                if (!old.matching_queries.has(query_id)) {
+                    var query_to_enter = self.query_builder.queries_by_id.getUnsafe(query_id);
+                    if (query_to_enter.on_enter) |on_enter| {
+                        on_enter(self, entity);
+                    }
                 }
             }
+            // if (self.archetypes.on_enter_callbacks.get(new.id)) |*on_enter_callbacks| {
+            //     for (on_enter_callbacks.items) |on_enter| {
+            //         on_enter(self, entity);
+            //     }
+            // }
         }
 
         // Create a pr-egenerated entity type from a set of components.

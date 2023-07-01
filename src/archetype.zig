@@ -1,10 +1,15 @@
 const std = @import("std");
+
+const Entity = @import("./entity-storage.zig").Entity;
+
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
+
+const QueryId = @import("./query.zig").QueryId;
+
 const SparseSet = @import("./sparse-set.zig").SparseSet;
 const SparseArray = @import("./sparse-array.zig").SparseArray;
 const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
-const Entity = @import("./entity-storage.zig").Entity;
 
 const DEFAULT_WORLD_CAPACITY = @import("./context.zig").DEFAULT_WORLD_CAPACITY;
 
@@ -13,6 +18,8 @@ pub const ArchetypeMask = FixedSizeBitset;
 const ARCHETYPE_EDGE_CAPACITY: u32 = 10_000;
 
 const ARCHETYPE_BITSET_CAPACITY: u32 = 50;
+
+const ARCHETYPE_MATCHING_QUERIES_CAPACITY: u32 = 100;
 
 pub const Archetype = struct {
     const Self = @This();
@@ -29,12 +36,15 @@ pub const Archetype = struct {
 
     edge: SparseArray(ComponentId, *Archetype),
 
+    matching_queries: SparseSet(QueryId),
+
     capacity: u32,
 
     pub fn deinit(self: *Self) void {
         self.mask.deinit();
         self.edge.deinit();
         self.entities.deinit();
+        self.matching_queries.deinit();
     }
 
     pub fn build(comps: anytype, allocator: std.mem.Allocator, capacity: u32) Archetype {
@@ -50,6 +60,10 @@ pub const Archetype = struct {
             .edge = SparseArray(ComponentId, *Archetype).init(.{
                 .allocator = allocator,
                 .capacity = capacity,
+            }),
+            .matching_queries = SparseSet(QueryId).init(.{
+                .allocator = allocator,
+                .capacity = ARCHETYPE_MATCHING_QUERIES_CAPACITY,
             }),
             .capacity = capacity,
         };
@@ -77,6 +91,10 @@ pub const Archetype = struct {
                 .capacity = capacity,
             }),
             .capacity = capacity,
+            .matching_queries = SparseSet(QueryId).init(.{
+                .allocator = allocator,
+                .capacity = ARCHETYPE_MATCHING_QUERIES_CAPACITY,
+            }),
         };
     }
 

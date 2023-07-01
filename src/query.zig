@@ -5,6 +5,7 @@ const Context = @import("./context.zig").Context;
 const Entity = @import("./entity-storage.zig").Entity;
 const ComponentId = @import("./component.zig").ComponentId;
 const FixedSizeBitset = @import("./fixed-size-bitset.zig").FixedSizeBitset;
+const SparseArray = @import("./sparse-array.zig").SparseArray;
 const String = @import("./lib/string/string.zig").String;
 const QueryCallback = @import("./system.zig").QueryCallback;
 
@@ -19,9 +20,15 @@ pub const QueryMatcherType = enum {
 
 pub const QueryHash = String;
 
+pub const QueryId = u32;
+
 pub fn Query(comptime ContextType: anytype) type {
     return struct {
         const Self = @This();
+
+        var counter: QueryId = 0;
+
+        id: QueryId,
 
         archetypes: std.ArrayList(*Archetype),
 
@@ -36,6 +43,7 @@ pub fn Query(comptime ContextType: anytype) type {
         on_exit: ?QueryCallback(ContextType),
 
         pub fn init(matchers: std.ArrayList(QueryMatcher), allocator: std.mem.Allocator) Self {
+            counter += 1;
             return Self{
                 .allocator = allocator,
                 .matchers = matchers,
@@ -43,6 +51,7 @@ pub fn Query(comptime ContextType: anytype) type {
                 .context = undefined,
                 .on_enter = null,
                 .on_exit = null,
+                .id = counter,
             };
         }
 
@@ -75,6 +84,8 @@ pub fn Query(comptime ContextType: anytype) type {
             }
 
             _ = self.archetypes.append(archetype) catch null;
+
+            archetype.matching_queries.add(self.id);
 
             if (self.on_enter) |on_enter| {
                 var callbacks_array = self.context.archetypes.on_enter_callbacks.getOrPut(archetype.id) catch unreachable;
@@ -155,6 +166,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
         prepared_query_hash: String,
 
         queries: std.hash_map.StringHashMap(Query(ContextType)),
+        queries_by_id: SparseArray(QueryId, *Query(ContextType)),
 
         context: *ContextType,
 
@@ -165,6 +177,10 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
                 .allocator = allocator,
                 .prepared_query_matchers = std.ArrayList(QueryMatcher).init(allocator),
                 .queries = std.hash_map.StringHashMap(Query(ContextType)).init(allocator),
+                .queries_by_id = SparseArray(QueryId, *Query(ContextType)).init(.{
+                    .allocator = allocator,
+                    .capacity = 10_000,
+                }),
                 .context = undefined,
                 .prepared_query_hash = prepared_query_hash,
                 .prepared_on_enter = null,
@@ -186,6 +202,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
 
             self.queries.deinit();
             self.prepared_query_hash.deinit();
+            self.queries_by_id.deinit();
         }
         //
         // Select the archetypes which posess at least one of the given components.
@@ -254,6 +271,8 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
             created_query.execute(self.context);
 
             query.value_ptr.* = created_query;
+
+            self.queries_by_id.set(query.value_ptr.id, query.value_ptr);
 
             self.clearPreparedQuery();
 
