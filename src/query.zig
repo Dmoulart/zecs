@@ -87,6 +87,12 @@ pub fn Query(comptime ContextType: anytype) type {
 
             archetype.matching_queries.add(self.id);
 
+            if (self.on_enter) |on_enter| {
+                for (archetype.entities.toSlice()) |entity| {
+                    on_enter(self.context, entity);
+                }
+            }
+
             // if (self.on_enter) |on_enter| {
             //     var callbacks_array = self.context.archetypes.on_enter_callbacks.getOrPut(archetype.id) catch unreachable;
 

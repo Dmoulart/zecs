@@ -148,19 +148,16 @@ pub fn Context(comptime config: anytype) type {
             if (!components_are_ready) {
                 return ContextError.NotReady;
             }
-            // std.debug.print("components_are_ready", .{});
             var archetypes_storage_capacity = options.archetypes_capacity;
 
             var archetypes = try ArchetypeStorage(Self).init(.{
                 .capacity = archetypes_storage_capacity,
                 .archetype_capacity = capacity,
             }, options.allocator);
-            // std.debug.print("create archs", .{});
             var entities = try EntityStorage.init(.{
                 .allocator = options.allocator,
                 .capacity = capacity,
             });
-            // std.debug.print("create ent storage", .{});
             var systems = std.ArrayList(System(Self)).init(options.allocator);
 
             var context = Self{
@@ -172,10 +169,6 @@ pub fn Context(comptime config: anytype) type {
                 ),
                 .root = archetypes.getRoot(),
                 .systems = systems,
-                // .on_add = SparseArray(usize, OnEnterQuery(*Self)).init(.{
-                //     .allocator = options.allocator,
-                //     .capacity = archetypes.capacity,
-                // }),
                 .resources = Resources{},
             };
 
