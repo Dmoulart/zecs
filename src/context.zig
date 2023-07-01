@@ -196,7 +196,16 @@ pub fn Context(comptime config: anytype) type {
         }
 
         pub fn deleteEntity(self: *Self, entity: Entity) void {
-            self.entities.delete(entity);
+            var entity_archetype = self.entities.delete(entity);
+
+            // execute on exit queries
+            for (entity_archetype.matching_queries.toSlice()) |query_id| {
+                // If the same queries apply to the new and old arch don't apply the callback
+                var query_to_exit = self.query_builder.queries_by_id.getUnsafe(query_id);
+                if (query_to_exit.on_exit) |on_exit| {
+                    on_exit(self, entity);
+                }
+            }
         }
 
         pub fn has(self: *Self, entity: Entity, comptime component_name: ComponentName) bool {

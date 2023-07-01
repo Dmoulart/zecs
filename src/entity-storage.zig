@@ -71,7 +71,7 @@ pub const EntityStorage = struct {
         return created_entity;
     }
 
-    pub fn delete(self: *Self, entity: Entity) void {
+    pub fn delete(self: *Self, entity: Entity) *Archetype {
         var archetype = self.all.getUnsafe(entity);
 
         archetype.entities.removeUnsafe(entity);
@@ -80,6 +80,8 @@ pub const EntityStorage = struct {
         self.deleted.appendAssumeCapacity(entity);
 
         self.count -= 1;
+
+        return archetype;
     }
 
     pub fn getArchetype(self: *Self, entity: Entity) ?*Archetype {
