@@ -95,9 +95,9 @@ pub fn Context(comptime config: anytype) type {
 
         systems: std.ArrayList(System(Self)),
 
-        // on_add: SparseArray(usize, QueryCallback(*Self)),
-
         query_builder: QueryBuilder(Self),
+
+        on_start: ?System(Self),
 
         resources: Resources,
 
@@ -106,6 +106,7 @@ pub fn Context(comptime config: anytype) type {
         const ContextOptions = struct {
             allocator: std.mem.Allocator,
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
+            on_start: ?System(Self) = null,
         };
 
         pub fn setup(allocator: std.mem.Allocator) !void {
@@ -170,6 +171,7 @@ pub fn Context(comptime config: anytype) type {
                 .root = archetypes.getRoot(),
                 .systems = systems,
                 .resources = Resources{},
+                .on_start = options.on_start,
             };
 
             return context;
@@ -180,6 +182,12 @@ pub fn Context(comptime config: anytype) type {
             self.archetypes.deinit();
             self.entities.deinit();
             self.systems.deinit();
+        }
+
+        pub fn run(self: *Self) void {
+            if (self.on_start) |on_start| {
+                on_start(self);
+            }
         }
 
         pub fn createEmpty(self: *Self) Entity {
@@ -369,10 +377,6 @@ pub fn Context(comptime config: anytype) type {
             self.systems.append(system) catch unreachable;
         }
 
-        // pub fn addSystem(self: *Self, system: System(Self)) void {
-        //     self.systems.append(system) catch unreachable;
-        // }
-
         pub fn step(self: *Self) void {
             for (self.systems.items) |system| {
                 system(self);
@@ -449,14 +453,8 @@ pub fn Context(comptime config: anytype) type {
                 }
             }
 
-            // if (self.archetypes.on_exit_callbacks.get(old.id)) |*on_exit_callbacks| {
-            //     for (on_exit_callbacks.items) |on_exit| {
-            //         // if(new.matching_queries.has(value: T))
-            //         on_exit(self, entity);
-            //     }
-            // }
-
             new.entities.add(entity);
+
             for (new.matching_queries.toSlice()) |query_id| {
                 // If the same queries apply to the new and old arch don't apply the callback
                 if (!old.matching_queries.has(query_id)) {
@@ -466,11 +464,6 @@ pub fn Context(comptime config: anytype) type {
                     }
                 }
             }
-            // if (self.archetypes.on_enter_callbacks.get(new.id)) |*on_enter_callbacks| {
-            //     for (on_enter_callbacks.items) |on_enter| {
-            //         on_enter(self, entity);
-            //     }
-            // }
         }
 
         // Create a pr-egenerated entity type from a set of components.
@@ -1767,6 +1760,43 @@ test "Multiple onEnter and onExit callbacks can coexist" {
     ecs.attach(entity, .Velocity);
     try expect(x.* == 10);
     try expect(inc.* == 1);
+}
 
-    // ecs.attach(entity, .Velocity);
+test "Can run function on start" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {
+            inc: i32 = 0,
+        },
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    const on_start = (struct {
+        fn callback(ecs: *Ecs) void {
+            var inc = ecs.getResource(.inc);
+            ecs.setResource(.inc, inc + 1);
+        }
+    }).callback;
+
+    var ecs = try Ecs.init(.{
+        .allocator = std.testing.allocator,
+        .on_start = on_start,
+    });
+    defer ecs.deinit();
+
+    ecs.run();
+
+    try expect(ecs.getResource(.inc) == 1);
 }
