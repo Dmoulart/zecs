@@ -3,6 +3,8 @@ const meta = @import("std").meta;
 const assert = @import("std").debug.assert;
 const expect = @import("std").testing.expect;
 
+const ArrayList = @import("std").ArrayList;
+
 const Component = @import("./component.zig").Component;
 const ComponentId = @import("./component.zig").ComponentId;
 const ComponentStorage = @import("./component.zig").ComponentStorage;
@@ -25,9 +27,15 @@ const QueryCallback = @import("./system.zig").QueryCallback;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
-fn OnStartCallback(comptime ContextType: anytype) type {
+fn FailableContextCallback(comptime ContextType: anytype) type {
     return *const fn (*ContextType) anyerror!void;
 }
+const OnStartCallback = FailableContextCallback;
+
+fn ContextCallback(comptime ContextType: anytype) type {
+    return *const fn (*ContextType) void;
+}
+const OnDeinitCallback = ContextCallback;
 
 const ContextError = error{
     NotReady,
@@ -101,11 +109,13 @@ pub fn Context(comptime config: anytype) type {
 
         query_builder: QueryBuilder(Self),
 
-        on_start: ?OnStartCallback(Self),
-
         resources: Resources,
 
         root: *Archetype,
+
+        on_start: ?OnStartCallback(Self),
+
+        on_deinit: ArrayList(OnDeinitCallback(Self)),
 
         const ContextOptions = struct {
             allocator: std.mem.Allocator,
@@ -163,7 +173,7 @@ pub fn Context(comptime config: anytype) type {
                 .allocator = options.allocator,
                 .capacity = capacity,
             });
-            var systems = std.ArrayList(System(Self)).init(options.allocator);
+            var systems = ArrayList(System(Self)).init(options.allocator);
 
             var context = Self{
                 .allocator = options.allocator,
@@ -176,6 +186,7 @@ pub fn Context(comptime config: anytype) type {
                 .systems = systems,
                 .resources = Resources{},
                 .on_start = options.on_start,
+                .on_deinit = ArrayList(OnDeinitCallback(Self)).init(options.allocator),
             };
 
             return context;
@@ -186,12 +197,21 @@ pub fn Context(comptime config: anytype) type {
             self.archetypes.deinit();
             self.entities.deinit();
             self.systems.deinit();
+
+            for (self.on_deinit.items) |on_deinit| {
+                on_deinit(self);
+            }
+            self.on_deinit.deinit();
         }
 
         pub fn run(self: *Self) anyerror!void {
             if (self.on_start) |on_start| {
                 try on_start(self);
             }
+        }
+
+        pub fn onDeinit(self: *Self, on_deinit: OnDeinitCallback(Self)) void {
+            self.on_deinit.append(on_deinit) catch unreachable;
         }
 
         pub fn createEmpty(self: *Self) Entity {
@@ -1801,6 +1821,44 @@ test "Can run function on start" {
     defer ecs.deinit();
 
     try ecs.run();
+
+    try expect(ecs.getResource(.inc) == 1);
+}
+
+test "Can run functions on deinit" {
+    const Ecs = Context(.{
+        .components = .{
+            Component("Position", struct {
+                x: i32,
+                y: i32,
+            }),
+            Component("Velocity", struct {
+                x: i32,
+                y: i32,
+            }),
+        },
+        .Resources = struct {
+            inc: i32 = 0,
+        },
+        .capacity = 10,
+    });
+
+    try Ecs.setup(std.testing.allocator);
+    defer Ecs.unsetup();
+
+    var ecs = try Ecs.init(.{
+        .allocator = std.testing.allocator,
+    });
+
+    const callback = (struct {
+        fn callback(world: *Ecs) void {
+            var inc = world.getResource(.inc);
+            world.setResource(.inc, inc + 1);
+        }
+    }).callback;
+
+    ecs.onDeinit(callback);
+    ecs.deinit();
 
     try expect(ecs.getResource(.inc) == 1);
 }
