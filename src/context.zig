@@ -25,6 +25,10 @@ const QueryCallback = @import("./system.zig").QueryCallback;
 const DEFAULT_ARCHETYPES_STORAGE_CAPACITY = @import("./archetype-storage.zig").DEFAULT_ARCHETYPES_STORAGE_CAPACITY;
 const DEFAULT_WORLD_CAPACITY = 10_000;
 
+fn OnStartCallback(comptime ContextType: anytype) type {
+    return *const fn (*ContextType) anyerror!void;
+}
+
 const ContextError = error{
     NotReady,
     AlreadyReady,
@@ -97,7 +101,7 @@ pub fn Context(comptime config: anytype) type {
 
         query_builder: QueryBuilder(Self),
 
-        on_start: ?System(Self),
+        on_start: ?OnStartCallback(Self),
 
         resources: Resources,
 
@@ -106,7 +110,7 @@ pub fn Context(comptime config: anytype) type {
         const ContextOptions = struct {
             allocator: std.mem.Allocator,
             archetypes_capacity: ?u32 = DEFAULT_ARCHETYPES_STORAGE_CAPACITY,
-            on_start: ?System(Self) = null,
+            on_start: ?OnStartCallback(Self) = null,
         };
 
         pub fn setup(allocator: std.mem.Allocator) !void {
@@ -184,9 +188,9 @@ pub fn Context(comptime config: anytype) type {
             self.systems.deinit();
         }
 
-        pub fn run(self: *Self) void {
+        pub fn run(self: *Self) anyerror!void {
             if (self.on_start) |on_start| {
-                on_start(self);
+                try on_start(self);
             }
         }
 
@@ -1784,7 +1788,7 @@ test "Can run function on start" {
     defer Ecs.unsetup();
 
     const on_start = (struct {
-        fn callback(ecs: *Ecs) void {
+        fn callback(ecs: *Ecs) anyerror!void {
             var inc = ecs.getResource(.inc);
             ecs.setResource(.inc, inc + 1);
         }
@@ -1796,7 +1800,7 @@ test "Can run function on start" {
     });
     defer ecs.deinit();
 
-    ecs.run();
+    try ecs.run();
 
     try expect(ecs.getResource(.inc) == 1);
 }
