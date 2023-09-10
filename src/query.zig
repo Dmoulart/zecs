@@ -290,7 +290,7 @@ pub fn QueryBuilder(comptime ContextType: anytype) type {
 
             var mask = FixedSizeBitset.init(.{});
 
-            var matcher_type_str = std.fmt.comptimePrint("{d}", .{@enumToInt(matcher_type)});
+            var matcher_type_str = std.fmt.comptimePrint("{d}", .{@intFromEnum(matcher_type)});
 
             self.prepared_query_hash.concat(matcher_type_str) catch unreachable;
             self.prepared_query_hash.concat(":") catch unreachable;

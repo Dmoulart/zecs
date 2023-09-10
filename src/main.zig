@@ -329,8 +329,8 @@ fn readTwoComponentsProp(comptime n: u32) !void {
             ent,
             .Position,
             .{
-                .x = @intToFloat(f32, i),
-                .y = @intToFloat(f32, i + 1),
+                .x = @as(f32, @floatFromInt(i)),
+                .y = @as(f32, @floatFromInt(i + 1)),
             },
         );
 
@@ -339,8 +339,8 @@ fn readTwoComponentsProp(comptime n: u32) !void {
             ent,
             .Velocity,
             .{
-                .x = @intToFloat(f32, i),
-                .y = @intToFloat(f32, i + 1),
+                .x = @as(f32, @floatFromInt(i)),
+                .y = @as(f32, @floatFromInt(i + 1)),
             },
         );
     }

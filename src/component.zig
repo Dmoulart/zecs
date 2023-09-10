@@ -40,12 +40,12 @@ pub fn Packed(comptime Schema: anytype) type {
         var fields: []const std.builtin.Type.StructField = &[0]std.builtin.Type.StructField{};
         var Field = std.meta.FieldEnum(Schema);
 
-        inline for (SchemaFields) |field, i| {
-            const FieldType = std.meta.fieldInfo(Schema, @intToEnum(Field, i)).field_type;
+        inline for (SchemaFields, 0..) |field, i| {
+            const FieldType = std.meta.fieldInfo(Schema, @as(Field, @enumFromInt(i))).type;
 
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = field.name[0..],
-                .field_type = *FieldType,
+                .type = *FieldType,
                 .is_comptime = false,
                 .alignment = @alignOf(*FieldType),
                 .default_value = field.default_value,
@@ -78,11 +78,11 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
         var Field = std.meta.FieldEnum(component.Schema);
 
-        inline for (ComponentsSchemaFields) |field, i| {
-            const FieldType = std.meta.fieldInfo(component.Schema, @intToEnum(Field, i)).field_type;
+        inline for (ComponentsSchemaFields, 0..) |field, i| {
+            const FieldType = std.meta.fieldInfo(component.Schema, @as(Field, @enumFromInt(i))).type;
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = field.name[0..],
-                .field_type = []FieldType,
+                .type = []FieldType,
                 .is_comptime = false,
                 .alignment = @alignOf(FieldType),
                 .default_value = field.default_value,
@@ -126,8 +126,8 @@ pub fn ComponentStorage(comptime component: anytype) type {
 
             // Cache fields pointers
             self.cached_slice = self.data.slice();
-            inline for (fields) |field_info, i| {
-                @field(self.cached_items, field_info.name) = self.cached_slice.items(@intToEnum(Field, i));
+            inline for (fields, 0..) |field_info, i| {
+                @field(self.cached_items, field_info.name) = self.cached_slice.items(@as(Field, @enumFromInt(i)));
             }
         }
 

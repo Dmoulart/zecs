@@ -59,7 +59,7 @@ pub fn Context(comptime config: anytype) type {
 
             fields = fields ++ [_]std.builtin.Type.StructField{.{
                 .name = ComponentType.name[0..],
-                .field_type = ComponentType,
+                .type = ComponentType,
                 .is_comptime = false,
                 .alignment = @alignOf(ComponentType),
                 .default_value = &component_instance,
@@ -412,7 +412,7 @@ pub fn Context(comptime config: anytype) type {
         }
 
         pub fn getComponent(comptime component_name: ComponentName) @TypeOf(@field(components_definitions, @tagName(component_name))) {
-            return comptime @field(components, @tagName(component_name));
+            return @field(components, @tagName(component_name));
         }
 
         // pub fn getComponentByString(comptime component_name: []const u8) @TypeOf(@field(components_definitions, component_name)) {
@@ -420,7 +420,7 @@ pub fn Context(comptime config: anytype) type {
         // }
 
         pub fn Resource(comptime field: meta.FieldEnum(Resources)) type {
-            return comptime meta.fieldInfo(Resources, field).field_type;
+            return comptime meta.fieldInfo(Resources, field).type;
         }
 
         pub fn getResource(self: *Self, comptime field: meta.FieldEnum(Resources)) Resource(field) {

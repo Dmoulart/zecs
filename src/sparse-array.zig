@@ -20,7 +20,7 @@ pub fn SparseArray(comptime I: type, comptime V: type) type {
             // err handling anyone ?
             var values = allocator.alloc(?V, capacity) catch unreachable;
             // nullify all this crap
-            std.mem.set(?V, values, null);
+            @memset(values, null);
 
             errdefer allocator.free(values);
 

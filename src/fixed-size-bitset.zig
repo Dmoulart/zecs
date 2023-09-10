@@ -20,7 +20,7 @@ pub const FixedSizeBitset = struct {
         _ = options;
         var data: [RAW_BITSET_CAPACITY]IntType = undefined;
 
-        std.mem.set(IntType, data[0..], 0);
+        @memset(data[0..], 0);
 
         return FixedSizeBitset{
             .data = data,
@@ -56,7 +56,7 @@ pub const FixedSizeBitset = struct {
         if (self.data[index] == 0) {
             var highest_index: usize = 0;
             // must shrink
-            for (self.data[0..]) |*mask, i| {
+            for (self.data[0..], 0..) |*mask, i| {
                 if (mask.* == 0) {
                     break;
                 } else {
@@ -118,7 +118,7 @@ pub const FixedSizeBitset = struct {
 };
 
 fn maskBit(index: usize) FixedSizeBitset.IntType {
-    return @as(FixedSizeBitset.IntType, 1) << @truncate(FixedSizeBitset.Shift, index);
+    return @as(FixedSizeBitset.IntType, 1) << @as(FixedSizeBitset.Shift, @truncate(index));
 }
 
 fn maskIndex(index: usize) usize {
