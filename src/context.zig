@@ -424,15 +424,15 @@ pub fn Context(comptime config: anytype) type {
         }
 
         pub fn getResource(self: *Self, comptime field: meta.FieldEnum(Resources)) Resource(field) {
-            return comptime @field(self.resources, @tagName(field));
+            return @field(self.resources, @tagName(field));
         }
 
         pub fn getResourcePtr(self: *Self, comptime field: meta.FieldEnum(Resources)) *Resource(field) {
-            return comptime &@field(self.resources, @tagName(field));
+            return &@field(self.resources, @tagName(field));
         }
 
         pub fn setResource(self: *Self, comptime field: meta.FieldEnum(Resources), value: Resource(field)) void {
-            comptime @field(self.resources, @tagName(field)) = value;
+            @field(self.resources, @tagName(field)) = value;
         }
 
         pub fn registerType(self: *Self, comptime entity_type: anytype) void {
